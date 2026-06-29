@@ -31,6 +31,40 @@
 
 - 项目文件（如 app 目录、pages 目录、components 等）默认初始化到 `src/` 目录下。
 
+## 项目概述
+
+**CommentHub** - 评论模板管理与定时发布工具
+
+### 核心功能
+- 评论模板 CRUD 管理（分类、标签、搜索）
+- 定时发布任务创建与管理
+- 发布历史记录查看
+- 仪表盘数据统计
+
+### 数据库表
+- `comment_templates` - 评论模板（id, title, content, category, tags, created_at, updated_at）
+- `publish_tasks` - 发布任务（id, template_id, content, target_url, target_platform, status, scheduled_at, published_at, error_message, created_at, updated_at）
+
+### API 接口
+- `GET/POST /api/templates` - 模板列表/创建
+- `GET/PUT/DELETE /api/templates/[id]` - 模板详情/更新/删除
+- `GET/POST /api/tasks` - 任务列表/创建
+- `GET/PUT/DELETE /api/tasks/[id]` - 任务详情/更新/删除
+- `GET /api/dashboard` - 仪表盘统计
+
+### 页面路由
+- `/` - 仪表盘
+- `/templates` - 评论模板管理
+- `/tasks` - 定时发布任务
+- `/history` - 发布历史
+
+### 关键文件
+- `src/storage/database/supabase-client.ts` - Supabase 客户端
+- `src/storage/database/shared/schema.ts` - 数据库 Schema
+- `src/components/sidebar.tsx` - 侧边栏导航
+- `src/components/stat-card.tsx` - 统计卡片组件
+- `src/components/status-badge.tsx` - 状态标签组件
+
 ## 包管理规范
 
 **仅允许使用 pnpm** 作为包管理器，**严禁使用 npm 或 yarn**。
