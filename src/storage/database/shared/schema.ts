@@ -124,3 +124,28 @@ export const alertRecords = pgTable(
     index("alert_records_sent_at_idx").on(table.sent_at),
   ]
 );
+
+// 自动采集配置表
+export const autoCollectConfigs = pgTable(
+  "auto_collect_configs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    stock_code: varchar("stock_code", { length: 20 }).notNull(),
+    stock_name: varchar("stock_name", { length: 50 }).notNull(),
+    // 采集频率
+    collect_interval: varchar("collect_interval", { length: 20 }).notNull().default("daily"), // daily, hourly
+    collect_time: varchar("collect_time", { length: 10 }), // 采集时间，如 "09:00" 表示每天 9 点
+    page_size: varchar("page_size", { length: 10 }).notNull().default("50"), // 每次采集数量
+    // 状态
+    is_active: varchar("is_active", { length: 10 }).notNull().default("true"),
+    // 上次采集时间
+    last_collected_at: timestamp("last_collected_at", { withTimezone: true }),
+    // 元数据
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("auto_collect_configs_stock_code_idx").on(table.stock_code),
+    index("auto_collect_configs_is_active_idx").on(table.is_active),
+  ]
+);

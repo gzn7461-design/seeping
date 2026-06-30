@@ -52,6 +52,7 @@
 - `stock_comments` - 股吧评论（id, stock_code, stock_name, username, comment_content, comment_time, source_url, sentiment, sentiment_score, ai_analysis, collected_at, created_at, updated_at）
 - `alert_configs` - 预警配置（id, stock_code, stock_name, negative_threshold, wecom_webhook, is_active, created_at, updated_at）
 - `alert_records` - 预警记录（id, config_id, stock_code, stock_name, alert_type, threshold, actual_value, message, sent_at, created_at）
+- `auto_collect_configs` - 自动采集配置（id, stock_code, stock_name, collect_interval, collect_time, page_size, is_active, last_collected_at, created_at, updated_at）
 
 ### API 接口
 - `GET/POST /api/templates` - 模板列表/创建（支持 stock_code/stock_name 筛选）
@@ -65,6 +66,8 @@
 - `POST /api/comments/analyze` - AI 分析单条评论情感
 - `GET/POST /api/alerts/configs` - 预警配置列表/创建
 - `POST /api/alerts/check` - 检查并触发预警
+- `GET/POST/PUT/DELETE /api/auto-collect/configs` - 自动采集配置管理
+- `POST /api/auto-collect/run` - 执行自动采集
 
 ### 页面路由
 - `/` - 仪表盘

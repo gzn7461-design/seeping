@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { stockComments } from "@/storage/database/shared/schema";
-import { eq, desc } from "drizzle-orm";
 
 // 东方财富股吧评论 API
 async function fetchEastmoneyComments(stockCode: string, page: number = 1, pageSize: number = 30) {
-  // 东方财富股吧 API - 获取评论列表
   const url = `https://guba.eastmoney.com/interface/GetData.aspx`;
   
   try {
@@ -24,7 +21,6 @@ async function fetchEastmoneyComments(stockCode: string, page: number = 1, pageS
     }
 
     const text = await response.text();
-    // 解析返回数据
     const data = JSON.parse(text);
     
     if (data && data.re) {
@@ -38,32 +34,19 @@ async function fetchEastmoneyComments(stockCode: string, page: number = 1, pageS
     return [];
   } catch (error) {
     console.error('Failed to fetch comments from Eastmoney:', error);
-    // 返回模拟数据用于演示
     return generateMockComments(stockCode, page, pageSize);
   }
 }
 
-// 模拟数据（当 API 不可用时）
+// 模拟数据
 function generateMockComments(stockCode: string, _page: number, pageSize: number) {
   const mockComments = [
-    { username: '股市老手', content: '今天放量突破，后市看好！', sentiment: 'positive' },
-    { username: '价值投资者', content: '基本面很好，长期持有', sentiment: 'positive' },
-    { username: '短线选手', content: '主力在洗盘，别被洗出去', sentiment: 'neutral' },
-    { username: '散户小王', content: '又跌了，什么时候是个头', sentiment: 'negative' },
-    { username: '技术派', content: 'MACD金叉，可以进场', sentiment: 'positive' },
-    { username: '谨慎投资者', content: '大盘不稳，建议观望', sentiment: 'neutral' },
-    { username: '亏损散户', content: '套了半年了，割肉算了', sentiment: 'negative' },
-    { username: '理性分析', content: '估值合理，可以分批建仓', sentiment: 'positive' },
-    { username: '韭菜一号', content: '又被割了，这股票有毒', sentiment: 'negative' },
-    { username: '长期持有者', content: '不理会短期波动，继续持有', sentiment: 'neutral' },
+    { username: '股市老手', content: '今天放量突破，后市看好！' },
+    { username: '价值投资者', content: '基本面很好，长期持有' },
+    { username: '短线选手', content: '主力在洗盘，别被洗出去' },
+    { username: '散户小王', content: '又跌了，什么时候是个头' },
+    { username: '技术派', content: 'MACD金叉，可以进场' },
   ];
-
-  const stockNames: Record<string, string> = {
-    '600519': '贵州茅台',
-    '000858': '五粮液',
-    '601318': '中国平安',
-    '600036': '招商银行',
-  };
 
   return Array.from({ length: pageSize }, (_, i) => {
     const mock = mockComments[i % mockComments.length];
@@ -73,14 +56,12 @@ function generateMockComments(stockCode: string, _page: number, pageSize: number
       username: mock.username,
       content: mock.content,
       time: now.toISOString(),
-      id: `mock_${stockCode}_${i}`,
-      _sentiment: mock.sentiment,
-      _stockName: stockNames[stockCode] || '未知股票',
+      id: `mock_${stockCode}_${Date.now()}_${i}`,
     };
   });
 }
 
-// 简单的情感分析（基于关键词）
+// 简单的情感分析
 function simpleSentimentAnalysis(content: string): { sentiment: string; score: string } {
   const positiveWords = ['看好', '上涨', '突破', '金叉', '买入', '加仓', '利好', '强势', '反弹', '机会', '底部', '低估'];
   const negativeWords = ['看空', '下跌', '割肉', '套牢', '利空', '弱势', '崩盘', '风险', '亏损', '垃圾', '有毒', '骗子'];
@@ -100,37 +81,60 @@ function simpleSentimentAnalysis(content: string): { sentiment: string; score: s
   return { sentiment, score: (score / 10).toFixed(2) };
 }
 
+// POST /api/auto-collect/run - 执行自动采集
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { stock_code, stock_name, page = 1, page_size = 30 } = body;
+    const { config_id, stock_code, stock_name, page_size = 50 } = body;
 
-    if (!stock_code) {
+    const supabase = getSupabaseClient();
+
+    // 如果提供了 config_id，从配置中获取股票信息
+    let targetStockCode = stock_code;
+    let targetStockName = stock_name;
+    let targetPageSize = page_size;
+
+    if (config_id) {
+      const { data: config, error } = await supabase
+        .from('auto_collect_configs')
+        .select('*')
+        .eq('id', config_id)
+        .single();
+
+      if (error || !config) {
+        return NextResponse.json(
+          { success: false, error: '配置不存在' },
+          { status: 404 }
+        );
+      }
+
+      targetStockCode = config.stock_code;
+      targetStockName = config.stock_name;
+      targetPageSize = parseInt(config.page_size || '50', 10);
+    }
+
+    if (!targetStockCode || !targetStockName) {
       return NextResponse.json(
-        { success: false, error: '股票代码不能为空' },
+        { success: false, error: '股票代码和名称不能为空' },
         { status: 400 }
       );
     }
 
     // 获取评论
-    const rawComments = await fetchEastmoneyComments(stock_code, page, page_size);
-    
-    const supabase = getSupabaseClient();
+    const rawComments = await fetchEastmoneyComments(targetStockCode, 1, targetPageSize);
     const collectedComments = [];
 
     for (const comment of rawComments) {
-      // 情感分析
       const analysis = simpleSentimentAnalysis(comment.content);
       
-      // 生成评论URL（东方财富股吧帖子链接格式）
+      // 生成评论URL
       const sourceUrl = comment.id && comment.id.startsWith('mock_')
-        ? `https://guba.eastmoney.com/list,${stock_code}.html`
-        : `https://guba.eastmoney.com/${stock_code},${comment.id}.html`;
+        ? `https://guba.eastmoney.com/list,${targetStockCode}.html`
+        : `https://guba.eastmoney.com/${targetStockCode},${comment.id}.html`;
       
-      // 保存到数据库
       const newComment = {
-        stock_code,
-        stock_name: stock_name || '未知股票',
+        stock_code: targetStockCode,
+        stock_name: targetStockName,
         username: comment.username,
         comment_content: comment.content,
         comment_time: comment.time,
@@ -151,6 +155,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 更新配置的上次采集时间
+    if (config_id) {
+      await supabase
+        .from('auto_collect_configs')
+        .update({ 
+          last_collected_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', config_id);
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -159,9 +174,9 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Failed to collect comments:', error);
+    console.error('Failed to run auto collect:', error);
     return NextResponse.json(
-      { success: false, error: '采集评论失败' },
+      { success: false, error: '执行自动采集失败' },
       { status: 500 }
     );
   }

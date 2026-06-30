@@ -42,6 +42,11 @@ import {
   AlertTriangle,
   TrendingUp,
   MessageSquare,
+  ExternalLink,
+  Clock,
+  Settings,
+  Trash2,
+  Plus,
 } from "lucide-react";
 
 interface StockComment {
@@ -51,9 +56,21 @@ interface StockComment {
   username: string;
   comment_content: string;
   comment_time: string;
+  source_url: string | null;
   sentiment: string;
   sentiment_score: string;
   ai_analysis: string | null;
+}
+
+interface AutoCollectConfig {
+  id: string;
+  stock_code: string;
+  stock_name: string;
+  collect_interval: string;
+  collect_time: string;
+  page_size: string;
+  is_active: string;
+  last_collected_at: string | null;
 }
 
 interface Stats {
@@ -73,6 +90,17 @@ export default function MonitorPage() {
   const [sentimentFilter, setSentimentFilter] = useState<string>("all");
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [selectedComment, setSelectedComment] = useState<StockComment | null>(null);
+  
+  // 自动采集配置
+  const [autoConfigs, setAutoConfigs] = useState<AutoCollectConfig[]>([]);
+  const [showAutoConfigDialog, setShowAutoConfigDialog] = useState(false);
+  const [newConfig, setNewConfig] = useState({
+    stock_code: "",
+    stock_name: "",
+    collect_interval: "daily",
+    collect_time: "09:00",
+    page_size: "50",
+  });
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -103,7 +131,88 @@ export default function MonitorPage() {
 
   useEffect(() => {
     fetchComments();
+    fetchAutoConfigs();
   }, [fetchComments]);
+
+  const fetchAutoConfigs = async () => {
+    try {
+      const res = await fetch("/api/auto-collect/configs");
+      const json = await res.json();
+      if (json.success) {
+        setAutoConfigs(json.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch auto configs:", error);
+    }
+  };
+
+  const handleCreateAutoConfig = async () => {
+    if (!newConfig.stock_code || !newConfig.stock_name) {
+      alert("请填写股票代码和名称");
+      return;
+    }
+    
+    try {
+      const res = await fetch("/api/auto-collect/configs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newConfig),
+      });
+      const json = await res.json();
+      
+      if (json.success) {
+        alert("自动采集配置创建成功");
+        setShowAutoConfigDialog(false);
+        setNewConfig({ stock_code: "", stock_name: "", collect_interval: "daily", collect_time: "09:00", page_size: "50" });
+        fetchAutoConfigs();
+      } else {
+        alert(json.error || "创建失败");
+      }
+    } catch (error) {
+      console.error("Failed to create auto config:", error);
+      alert("创建失败");
+    }
+  };
+
+  const handleDeleteAutoConfig = async (id: string) => {
+    if (!confirm("确定删除此配置？")) return;
+    
+    try {
+      const res = await fetch(`/api/auto-collect/configs?id=${id}`, { method: "DELETE" });
+      const json = await res.json();
+      
+      if (json.success) {
+        fetchAutoConfigs();
+      } else {
+        alert(json.error || "删除失败");
+      }
+    } catch (error) {
+      console.error("Failed to delete auto config:", error);
+      alert("删除失败");
+    }
+  };
+
+  const handleRunAutoCollect = async (configId: string) => {
+    try {
+      const res = await fetch("/api/auto-collect/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config_id: configId }),
+      });
+      const json = await res.json();
+      
+      if (json.success) {
+        alert(`成功采集 ${json.data.collected} 条评论`);
+        fetchComments();
+        fetchAutoConfigs();
+      } else {
+        alert(json.error || "采集失败");
+      }
+    } catch (error) {
+      console.error("Failed to run auto collect:", error);
+      alert("采集失败");
+    }
+  };
 
   const handleCollect = async () => {
     if (!stockCode) return;
@@ -285,6 +394,156 @@ export default function MonitorPage() {
           </CardContent>
         </Card>
 
+        {/* 自动采集配置 */}
+        <Card className="bg-white rounded-xl border-0 shadow-sm mb-6">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-gray-600" />
+              <CardTitle className="text-base font-medium">自动采集配置</CardTitle>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAutoConfigDialog(true)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              添加配置
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {autoConfigs.length === 0 ? (
+              <div className="text-center py-4 text-gray-500 text-sm">
+                暂无自动采集配置，点击"添加配置"创建定时采集任务
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>股票</TableHead>
+                    <TableHead>采集频率</TableHead>
+                    <TableHead>采集时间</TableHead>
+                    <TableHead>采集数量</TableHead>
+                    <TableHead>上次采集</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableHead>操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {autoConfigs.map((config) => (
+                    <TableRow key={config.id}>
+                      <TableCell className="text-sm font-medium">
+                        {config.stock_name}
+                        <span className="text-gray-400 ml-1">({config.stock_code})</span>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {config.collect_interval === "daily" ? "每天" : "每小时"}
+                      </TableCell>
+                      <TableCell className="text-sm">{config.collect_time || "-"}</TableCell>
+                      <TableCell className="text-sm">{config.page_size} 条</TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        {config.last_collected_at 
+                          ? formatTime(config.last_collected_at)
+                          : "未采集"
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={config.is_active === "true" ? "bg-green-100 text-green-700 border-green-200" : "bg-gray-100 text-gray-700 border-gray-200"}>
+                          {config.is_active === "true" ? "启用" : "停用"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRunAutoCollect(config.id)}
+                          >
+                            <Download className="h-3 w-3 mr-1" />
+                            立即采集
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteAutoConfig(config.id)}
+                          >
+                            <Trash2 className="h-3 w-3 text-red-500" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 添加自动采集配置弹窗 */}
+        <Dialog open={showAutoConfigDialog} onOpenChange={setShowAutoConfigDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>添加自动采集配置</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm text-gray-600 mb-1 block">股票代码</Label>
+                <Input
+                  placeholder="如 600519"
+                  value={newConfig.stock_code}
+                  onChange={(e) => setNewConfig({ ...newConfig, stock_code: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-sm text-gray-600 mb-1 block">股票名称</Label>
+                <Input
+                  placeholder="如 贵州茅台"
+                  value={newConfig.stock_name}
+                  onChange={(e) => setNewConfig({ ...newConfig, stock_name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-sm text-gray-600 mb-1 block">采集频率</Label>
+                <Select
+                  value={newConfig.collect_interval}
+                  onValueChange={(v) => setNewConfig({ ...newConfig, collect_interval: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">每天</SelectItem>
+                    <SelectItem value="hourly">每小时</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm text-gray-600 mb-1 block">采集时间</Label>
+                <Input
+                  type="time"
+                  value={newConfig.collect_time}
+                  onChange={(e) => setNewConfig({ ...newConfig, collect_time: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-sm text-gray-600 mb-1 block">每次采集数量</Label>
+                <Input
+                  type="number"
+                  value={newConfig.page_size}
+                  onChange={(e) => setNewConfig({ ...newConfig, page_size: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAutoConfigDialog(false)}>
+                取消
+              </Button>
+              <Button onClick={handleCreateAutoConfig} className="bg-[#1e293b] hover:bg-[#334155]">
+                创建
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* 评论列表 */}
         <Card className="bg-white rounded-xl border-0 shadow-sm">
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
@@ -327,6 +586,7 @@ export default function MonitorPage() {
                     <TableHead>股票</TableHead>
                     <TableHead>时间</TableHead>
                     <TableHead>情感</TableHead>
+                    <TableHead>链接</TableHead>
                     <TableHead>操作</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -334,7 +594,7 @@ export default function MonitorPage() {
                   {comments.map((comment) => (
                     <TableRow key={comment.id}>
                       <TableCell className="font-medium text-sm">{comment.username}</TableCell>
-                      <TableCell className="max-w-[300px] truncate text-sm">
+                      <TableCell className="max-w-[250px] truncate text-sm">
                         {comment.comment_content}
                       </TableCell>
                       <TableCell className="text-sm">
@@ -345,6 +605,21 @@ export default function MonitorPage() {
                         {formatTime(comment.comment_time)}
                       </TableCell>
                       <TableCell>{getSentimentBadge(comment.sentiment)}</TableCell>
+                      <TableCell>
+                        {comment.source_url ? (
+                          <a
+                            href={comment.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            查看
+                          </a>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button
@@ -406,6 +681,20 @@ export default function MonitorPage() {
                   <Label className="text-sm text-gray-500">评论内容</Label>
                   <p className="mt-1 p-3 bg-gray-50 rounded-lg text-sm">{selectedComment.comment_content}</p>
                 </div>
+                {selectedComment.source_url && (
+                  <div>
+                    <Label className="text-sm text-gray-500">评论链接</Label>
+                    <a
+                      href={selectedComment.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      {selectedComment.source_url}
+                    </a>
+                  </div>
+                )}
                 {selectedComment.ai_analysis && (
                   <div>
                     <Label className="text-sm text-gray-500">AI 分析</Label>
