@@ -43,10 +43,15 @@
 - 定时提醒功能（浏览器通知）
 - 发布历史记录查看
 - 仪表盘数据统计
+- **舆情监控** — 采集东方财富股吧评论，AI 情感分析（好评/一般/差评）
+- **预警管理** — 差评阈值配置，超过阈值自动推送企业微信机器人通知
 
 ### 数据库表
 - `comment_templates` - 评论模板（id, title, content, category, tags, stock_code, stock_name, created_at, updated_at）
 - `publish_tasks` - 发布任务（id, template_id, content, target_url, target_platform, status, stock_code, stock_name, scheduled_at, published_at, error_message, created_at, updated_at）
+- `stock_comments` - 股吧评论（id, stock_code, stock_name, username, comment_content, comment_time, source_url, sentiment, sentiment_score, ai_analysis, collected_at, created_at, updated_at）
+- `alert_configs` - 预警配置（id, stock_code, stock_name, negative_threshold, wecom_webhook, is_active, created_at, updated_at）
+- `alert_records` - 预警记录（id, config_id, stock_code, stock_name, alert_type, threshold, actual_value, message, sent_at, created_at）
 
 ### API 接口
 - `GET/POST /api/templates` - 模板列表/创建（支持 stock_code/stock_name 筛选）
@@ -55,12 +60,19 @@
 - `GET/PUT/DELETE /api/tasks/[id]` - 任务详情/更新/删除
 - `GET /api/dashboard` - 仪表盘统计
 - `POST /api/generate-comment` - AI 生成评论（流式输出，支持情绪/风格选择）
+- `POST /api/collect-comments` - 采集东方财富股吧评论
+- `GET /api/comments` - 获取已采集评论列表（支持 sentiment 筛选）
+- `POST /api/comments/analyze` - AI 分析单条评论情感
+- `GET/POST /api/alerts/configs` - 预警配置列表/创建
+- `POST /api/alerts/check` - 检查并触发预警
 
 ### 页面路由
 - `/` - 仪表盘
 - `/templates` - 评论模板管理
 - `/tasks` - 定时发布任务
 - `/history` - 发布历史
+- `/monitor` - 舆情监控（评论采集 + AI 分析）
+- `/alerts` - 预警管理（企业微信机器人配置）
 
 ### 关键文件
 - `src/storage/database/supabase-client.ts` - Supabase 客户端

@@ -51,3 +51,76 @@ export const publishTasks = pgTable(
     index("publish_tasks_stock_code_idx").on(table.stock_code),
   ]
 );
+
+// 股吧评论采集表
+export const stockComments = pgTable(
+  "stock_comments",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    stock_code: varchar("stock_code", { length: 20 }).notNull(),
+    stock_name: varchar("stock_name", { length: 50 }).notNull(),
+    username: varchar("username", { length: 100 }).notNull(),
+    comment_content: text("comment_content").notNull(),
+    comment_time: timestamp("comment_time", { withTimezone: true }).notNull(),
+    source_url: text("source_url"),
+    // AI 分析结果
+    sentiment: varchar("sentiment", { length: 20 }).notNull().default("neutral"), // positive, neutral, negative
+    sentiment_score: varchar("sentiment_score", { length: 10 }), // -1.0 到 1.0
+    ai_analysis: text("ai_analysis"), // AI 分析详情
+    // 元数据
+    collected_at: timestamp("collected_at", { withTimezone: true }).defaultNow().notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("stock_comments_stock_code_idx").on(table.stock_code),
+    index("stock_comments_sentiment_idx").on(table.sentiment),
+    index("stock_comments_comment_time_idx").on(table.comment_time),
+    index("stock_comments_collected_at_idx").on(table.collected_at),
+  ]
+);
+
+// 预警配置表
+export const alertConfigs = pgTable(
+  "alert_configs",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    stock_code: varchar("stock_code", { length: 20 }).notNull(),
+    stock_name: varchar("stock_name", { length: 50 }).notNull(),
+    // 预警阈值
+    negative_threshold: varchar("negative_threshold", { length: 10 }).notNull().default("30"), // 差评占比阈值，如 30 表示 30%
+    // 企业微信机器人 webhook
+    wecom_webhook: text("wecom_webhook").notNull(),
+    // 状态
+    is_active: varchar("is_active", { length: 10 }).notNull().default("true"),
+    // 元数据
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("alert_configs_stock_code_idx").on(table.stock_code),
+    index("alert_configs_is_active_idx").on(table.is_active),
+  ]
+);
+
+// 预警记录表
+export const alertRecords = pgTable(
+  "alert_records",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    config_id: varchar("config_id", { length: 36 }).references(() => alertConfigs.id, { onDelete: "cascade" }),
+    stock_code: varchar("stock_code", { length: 20 }).notNull(),
+    stock_name: varchar("stock_name", { length: 50 }).notNull(),
+    alert_type: varchar("alert_type", { length: 50 }).notNull(), // negative_threshold
+    threshold: varchar("threshold", { length: 10 }).notNull(),
+    actual_value: varchar("actual_value", { length: 10 }).notNull(),
+    message: text("message").notNull(),
+    sent_at: timestamp("sent_at", { withTimezone: true }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("alert_records_config_id_idx").on(table.config_id),
+    index("alert_records_stock_code_idx").on(table.stock_code),
+    index("alert_records_sent_at_idx").on(table.sent_at),
+  ]
+);
