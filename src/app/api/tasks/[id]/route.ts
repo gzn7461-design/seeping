@@ -10,7 +10,7 @@ export async function GET(
     const client = getSupabaseClient();
     const { data, error } = await client
       .from('publish_tasks')
-      .select('id, template_id, content, target_url, target_platform, status, scheduled_at, published_at, error_message, created_at, updated_at')
+      .select('id, template_id, content, target_url, target_platform, status, stock_code, stock_name, scheduled_at, published_at, error_message, created_at, updated_at')
       .eq('id', id)
       .maybeSingle();
 
@@ -33,7 +33,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, content, target_url, target_platform, scheduled_at } = body;
+    const { status, content, target_url, target_platform, scheduled_at, stock_code, stock_name } = body;
 
     const client = getSupabaseClient();
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -42,6 +42,8 @@ export async function PUT(
     if (target_url !== undefined) updateData.target_url = target_url;
     if (target_platform !== undefined) updateData.target_platform = target_platform;
     if (scheduled_at !== undefined) updateData.scheduled_at = scheduled_at;
+    if (stock_code !== undefined) updateData.stock_code = stock_code;
+    if (stock_name !== undefined) updateData.stock_name = stock_name;
     if (status === 'published') updateData.published_at = new Date().toISOString();
 
     const { data, error } = await client

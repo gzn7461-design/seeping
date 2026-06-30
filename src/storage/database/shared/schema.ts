@@ -14,12 +14,15 @@ export const commentTemplates = pgTable(
     content: text("content").notNull(),
     category: varchar("category", { length: 50 }).notNull().default("general"),
     tags: text("tags"),
+    stock_code: varchar("stock_code", { length: 20 }),
+    stock_name: varchar("stock_name", { length: 50 }),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index("comment_templates_category_idx").on(table.category),
     index("comment_templates_created_at_idx").on(table.created_at),
+    index("comment_templates_stock_code_idx").on(table.stock_code),
   ]
 );
 
@@ -30,8 +33,10 @@ export const publishTasks = pgTable(
     template_id: varchar("template_id", { length: 36 }).references(() => commentTemplates.id, { onDelete: "set null" }),
     content: text("content").notNull(),
     target_url: text("target_url").notNull(),
-    target_platform: varchar("target_platform", { length: 50 }).notNull().default("generic"),
+    target_platform: varchar("target_platform", { length: 50 }).notNull().default("eastmoney"),
     status: varchar("status", { length: 20 }).notNull().default("pending"),
+    stock_code: varchar("stock_code", { length: 20 }),
+    stock_name: varchar("stock_name", { length: 50 }),
     scheduled_at: timestamp("scheduled_at", { withTimezone: true }).notNull(),
     published_at: timestamp("published_at", { withTimezone: true }),
     error_message: text("error_message"),
@@ -43,5 +48,6 @@ export const publishTasks = pgTable(
     index("publish_tasks_status_idx").on(table.status),
     index("publish_tasks_scheduled_at_idx").on(table.scheduled_at),
     index("publish_tasks_status_scheduled_idx").on(table.status, table.scheduled_at),
+    index("publish_tasks_stock_code_idx").on(table.stock_code),
   ]
 );

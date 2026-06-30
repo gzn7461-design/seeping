@@ -36,21 +36,25 @@
 **CommentHub** - 评论模板管理与定时发布工具
 
 ### 核心功能
-- 评论模板 CRUD 管理（分类、标签、搜索）
-- 定时发布任务创建与管理
+- 评论模板 CRUD 管理（分类、标签、搜索、股票关联）
+- 一键复制模板内容到剪贴板
+- AI 生成评论草稿（基于股票信息、情绪倾向、语言风格）
+- 定时发布任务创建与管理（关联股票、计划时间）
+- 定时提醒功能（浏览器通知）
 - 发布历史记录查看
 - 仪表盘数据统计
 
 ### 数据库表
-- `comment_templates` - 评论模板（id, title, content, category, tags, created_at, updated_at）
-- `publish_tasks` - 发布任务（id, template_id, content, target_url, target_platform, status, scheduled_at, published_at, error_message, created_at, updated_at）
+- `comment_templates` - 评论模板（id, title, content, category, tags, stock_code, stock_name, created_at, updated_at）
+- `publish_tasks` - 发布任务（id, template_id, content, target_url, target_platform, status, stock_code, stock_name, scheduled_at, published_at, error_message, created_at, updated_at）
 
 ### API 接口
-- `GET/POST /api/templates` - 模板列表/创建
+- `GET/POST /api/templates` - 模板列表/创建（支持 stock_code/stock_name 筛选）
 - `GET/PUT/DELETE /api/templates/[id]` - 模板详情/更新/删除
-- `GET/POST /api/tasks` - 任务列表/创建
+- `GET/POST /api/tasks` - 任务列表/创建（支持股票关联）
 - `GET/PUT/DELETE /api/tasks/[id]` - 任务详情/更新/删除
 - `GET /api/dashboard` - 仪表盘统计
+- `POST /api/generate-comment` - AI 生成评论（流式输出，支持情绪/风格选择）
 
 ### 页面路由
 - `/` - 仪表盘

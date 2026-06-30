@@ -6,6 +6,8 @@ import {
   X,
   CalendarClock,
   ExternalLink,
+  Bell,
+  BellOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +34,8 @@ interface Task {
   target_url: string;
   target_platform: string;
   status: 'pending' | 'published' | 'failed' | 'cancelled';
+  stock_code: string | null;
+  stock_name: string | null;
   scheduled_at: string;
   published_at: string | null;
   error_message: string | null;
@@ -42,16 +46,9 @@ interface Template {
   id: string;
   title: string;
   content: string;
+  stock_code: string | null;
+  stock_name: string | null;
 }
-
-const platforms = [
-  { value: 'generic', label: '通用' },
-  { value: 'weibo', label: '微博' },
-  { value: 'douyin', label: '抖音' },
-  { value: 'xiaohongshu', label: '小红书' },
-  { value: 'bilibili', label: 'B站' },
-  { value: 'zhihu', label: '知乎' },
-];
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -59,12 +56,16 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [nextReminder, setNextReminder] = useState<Task | null>(null);
   const [formData, setFormData] = useState({
     content: '',
     target_url: '',
-    target_platform: 'generic',
+    target_platform: 'eastmoney',
     scheduled_at: '',
     template_id: '',
+    stock_code: '',
+    stock_name: '',
   });
 
   const fetchTasks = useCallback(async () => {
@@ -102,6 +103,50 @@ export default function TasksPage() {
     fetchTemplates();
   }, [fetchTasks]);
 
+  // Find next pending task for reminder
+  useEffect(() => {
+    const pendingTasks = tasks
+      .filter((t) => t.status === 'pending')
+      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+
+    if (pendingTasks.length > 0) {
+      setNextReminder(pendingTasks[0]);
+    } else {
+      setNextReminder(null);
+    }
+  }, [tasks]);
+
+  // Reminder notification
+  useEffect(() => {
+    if (!reminderEnabled || !nextReminder) return;
+
+    const checkReminder = () => {
+      const now = new Date();
+      const scheduledTime = new Date(nextReminder.scheduled_at);
+      const diff = scheduledTime.getTime() - now.getTime();
+
+      // If within 1 minute
+      if (diff > 0 && diff < 60000) {
+        if (Notification.permission === 'granted') {
+          new Notification('CommentHub 提醒', {
+            body: `即将发布评论到 ${nextReminder.stock_name || '股吧'}: ${nextReminder.content.slice(0, 50)}...`,
+            icon: '/favicon.ico',
+          });
+        }
+      }
+    };
+
+    const interval = setInterval(checkReminder, 30000);
+    return () => clearInterval(interval);
+  }, [reminderEnabled, nextReminder]);
+
+  const enableReminder = async () => {
+    if (Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+    setReminderEnabled(true);
+  };
+
   const handleSelectTemplate = (templateId: string) => {
     setFormData((prev) => ({ ...prev, template_id: templateId }));
     if (templateId) {
@@ -111,6 +156,8 @@ export default function TasksPage() {
           ...prev,
           template_id: templateId,
           content: template.content,
+          stock_code: template.stock_code || '',
+          stock_name: template.stock_name || '',
         }));
       }
     }
@@ -129,6 +176,8 @@ export default function TasksPage() {
           target_platform: formData.target_platform,
           scheduled_at: new Date(formData.scheduled_at).toISOString(),
           template_id: formData.template_id || null,
+          stock_code: formData.stock_code || null,
+          stock_name: formData.stock_name || null,
         }),
       });
       const json = await res.json();
@@ -137,9 +186,11 @@ export default function TasksPage() {
         setFormData({
           content: '',
           target_url: '',
-          target_platform: 'generic',
+          target_platform: 'eastmoney',
           scheduled_at: '',
           template_id: '',
+          stock_code: '',
+          stock_name: '',
         });
         fetchTasks();
       }
@@ -178,11 +229,14 @@ export default function TasksPage() {
     }
   };
 
-  // Get min datetime for scheduling (current time)
   const getMinDateTime = () => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     return now.toISOString().slice(0, 16);
+  };
+
+  const getStockBarUrl = (stockCode: string) => {
+    return `https://guba.eastmoney.com/list,${stockCode}.html`;
   };
 
   return (
@@ -192,25 +246,69 @@ export default function TasksPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">定时发布</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            创建和管理评论发布任务
+            创建评论发布任务，到时间提醒你手动发布
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setFormData({
-              content: '',
-              target_url: '',
-              target_platform: 'generic',
-              scheduled_at: '',
-              template_id: '',
-            });
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          新建任务
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={reminderEnabled ? 'default' : 'outline'}
+            onClick={reminderEnabled ? () => setReminderEnabled(false) : enableReminder}
+            className={reminderEnabled ? '' : ''}
+          >
+            {reminderEnabled ? (
+              <><Bell className="h-4 w-4 mr-2" />提醒已开启</>
+            ) : (
+              <><BellOff className="h-4 w-4 mr-2" />开启提醒</>
+            )}
+          </Button>
+          <Button
+            onClick={() => {
+              setFormData({
+                content: '',
+                target_url: '',
+                target_platform: 'eastmoney',
+                scheduled_at: '',
+                template_id: '',
+                stock_code: '',
+                stock_name: '',
+              });
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            新建任务
+          </Button>
+        </div>
       </div>
+
+      {/* Next Reminder Banner */}
+      {reminderEnabled && nextReminder && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Bell className="h-5 w-5 text-amber-600" />
+              <div>
+                <p className="text-sm font-medium text-amber-900">
+                  下一个任务: {nextReminder.stock_name || '股吧'}
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  计划时间: {new Date(nextReminder.scheduled_at).toLocaleString('zh-CN')}
+                </p>
+              </div>
+            </div>
+            {nextReminder.stock_code && (
+              <a
+                href={getStockBarUrl(nextReminder.stock_code)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 transition-colors"
+              >
+                打开股吧
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-3">
@@ -239,7 +337,7 @@ export default function TasksPage() {
           <CalendarClock className="h-12 w-12 mb-3 text-muted-foreground/50" />
           <p className="text-muted-foreground">暂无发布任务</p>
           <p className="text-sm text-muted-foreground mt-1">
-            点击「新建任务」创建定时发布
+            创建任务后，到时间会提醒你手动发布
           </p>
         </div>
       ) : (
@@ -253,16 +351,33 @@ export default function TasksPage() {
                 <div className="flex-1 min-w-0 mr-4">
                   <div className="flex items-center gap-3 mb-2">
                     <StatusBadge status={task.status} />
-                    <span className="text-xs text-muted-foreground">
-                      {platforms.find((p) => p.value === task.target_platform)?.label || task.target_platform}
-                    </span>
+                    {task.stock_name && (
+                      <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                        {task.stock_name}
+                        {task.stock_code && (
+                          <span className="ml-1 text-blue-500">{task.stock_code}</span>
+                        )}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-foreground line-clamp-2 mb-2">
                     {task.content}
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <ExternalLink className="h-3 w-3" />
-                    <span className="truncate">{task.target_url}</span>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <ExternalLink className="h-3 w-3" />
+                      <span className="truncate max-w-48">{task.target_url}</span>
+                    </div>
+                    {task.stock_code && (
+                      <a
+                        href={getStockBarUrl(task.stock_code)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        打开股吧
+                      </a>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
@@ -323,22 +438,41 @@ export default function TasksPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
+            {/* Stock Info */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-foreground">股票代码</label>
+                <Input
+                  placeholder="如: 600519"
+                  value={formData.stock_code}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, stock_code: e.target.value }))}
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground">股票名称</label>
+                <Input
+                  placeholder="如: 贵州茅台"
+                  value={formData.stock_name}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, stock_name: e.target.value }))}
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+
             {/* Template Selection */}
             <div>
               <label className="text-sm font-medium text-foreground">
                 从模板选择（可选）
               </label>
-              <Select
-                value={formData.template_id}
-                onValueChange={handleSelectTemplate}
-              >
+              <Select value={formData.template_id} onValueChange={handleSelectTemplate}>
                 <SelectTrigger className="mt-1.5">
                   <SelectValue placeholder="选择一个评论模板" />
                 </SelectTrigger>
                 <SelectContent>
                   {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.title}
+                      {t.stock_name ? `[${t.stock_name}] ` : ''}{t.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -352,11 +486,9 @@ export default function TasksPage() {
               </label>
               <Textarea
                 placeholder="输入要发布的评论内容..."
-                rows={4}
+                rows={3}
                 value={formData.content}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, content: e.target.value }))
-                }
+                onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
                 className="mt-1.5 resize-none"
               />
             </div>
@@ -367,54 +499,30 @@ export default function TasksPage() {
                 目标URL <span className="text-red-500">*</span>
               </label>
               <Input
-                placeholder="https://example.com/post/123"
+                placeholder="https://guba.eastmoney.com/list,600519.html"
                 value={formData.target_url}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, target_url: e.target.value }))
-                }
+                onChange={(e) => setFormData((prev) => ({ ...prev, target_url: e.target.value }))}
                 className="mt-1.5"
               />
+              {formData.stock_code && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  股吧地址: {getStockBarUrl(formData.stock_code)}
+                </p>
+              )}
             </div>
 
-            {/* Platform & Schedule */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground">目标平台</label>
-                <Select
-                  value={formData.target_platform}
-                  onValueChange={(val) =>
-                    setFormData((prev) => ({ ...prev, target_platform: val }))
-                  }
-                >
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {platforms.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>
-                        {p.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-foreground">
-                  计划时间 <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  type="datetime-local"
-                  value={formData.scheduled_at}
-                  min={getMinDateTime()}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      scheduled_at: e.target.value,
-                    }))
-                  }
-                  className="mt-1.5"
-                />
-              </div>
+            {/* Schedule */}
+            <div>
+              <label className="text-sm font-medium text-foreground">
+                计划时间 <span className="text-red-500">*</span>
+              </label>
+              <Input
+                type="datetime-local"
+                value={formData.scheduled_at}
+                min={getMinDateTime()}
+                onChange={(e) => setFormData((prev) => ({ ...prev, scheduled_at: e.target.value }))}
+                className="mt-1.5"
+              />
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
@@ -423,9 +531,7 @@ export default function TasksPage() {
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={
-                  !formData.content || !formData.target_url || !formData.scheduled_at
-                }
+                disabled={!formData.content || !formData.target_url || !formData.scheduled_at}
               >
                 创建任务
               </Button>

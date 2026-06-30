@@ -5,30 +5,30 @@ export async function GET() {
   try {
     const client = getSupabaseClient();
 
-    const [
-      { count: totalTemplates, error: templateError },
-      { count: totalTasks, error: taskError },
-      { count: pendingTasks, error: pendingError },
-      { count: publishedTasks, error: publishedError },
-      { count: failedTasks, error: failedError },
-    ] = await Promise.all([
-      client.from('comment_templates').select('*', { count: 'exact', head: true }),
-      client.from('publish_tasks').select('*', { count: 'exact', head: true }),
-      client.from('publish_tasks').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-      client.from('publish_tasks').select('*', { count: 'exact', head: true }).eq('status', 'published'),
-      client.from('publish_tasks').select('*', { count: 'exact', head: true }).eq('status', 'failed'),
-    ]);
+    // Get template count
+    const { count: templateCount, error: templateError } = await client
+      .from('comment_templates')
+      .select('*', { count: 'exact', head: true });
 
-    if (templateError) throw new Error(`统计模板失败: ${templateError.message}`);
-    if (taskError) throw new Error(`统计任务失败: ${taskError.message}`);
-    if (pendingError) throw new Error(`统计待发布失败: ${pendingError.message}`);
-    if (publishedError) throw new Error(`统计已发布失败: ${publishedError.message}`);
-    if (failedError) throw new Error(`统计失败任务失败: ${failedError.message}`);
+    if (templateError) throw new Error(`查询模板失败: ${templateError.message}`);
+
+    // Get task counts by status
+    const { data: allTasks, error: tasksError } = await client
+      .from('publish_tasks')
+      .select('id, status')
+      .limit(10000);
+
+    if (tasksError) throw new Error(`查询任务失败: ${tasksError.message}`);
+
+    const totalTasks = allTasks?.length ?? 0;
+    const pendingTasks = allTasks?.filter((t: { status: string }) => t.status === 'pending').length ?? 0;
+    const publishedTasks = allTasks?.filter((t: { status: string }) => t.status === 'published').length ?? 0;
+    const failedTasks = allTasks?.filter((t: { status: string }) => t.status === 'failed').length ?? 0;
 
     // Get recent tasks
     const { data: recentTasks, error: recentError } = await client
       .from('publish_tasks')
-      .select('id, content, target_url, status, scheduled_at, published_at')
+      .select('id, content, target_url, status, stock_name, stock_code, scheduled_at, published_at')
       .order('created_at', { ascending: false })
       .limit(5);
 
@@ -37,16 +37,19 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        totalTemplates: totalTemplates || 0,
-        totalTasks: totalTasks || 0,
-        pendingTasks: pendingTasks || 0,
-        publishedTasks: publishedTasks || 0,
-        failedTasks: failedTasks || 0,
-        recentTasks: recentTasks || [],
+        totalTemplates: templateCount ?? 0,
+        totalTasks,
+        pendingTasks,
+        publishedTasks,
+        failedTasks,
+        recentTasks: recentTasks ?? [],
       },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: 500 }
+    );
   }
 }

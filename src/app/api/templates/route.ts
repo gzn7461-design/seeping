@@ -6,18 +6,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const search = searchParams.get('search');
+    const stockCode = searchParams.get('stock_code');
 
     const client = getSupabaseClient();
     let query = client
       .from('comment_templates')
-      .select('id, title, content, category, tags, created_at, updated_at')
+      .select('id, title, content, category, tags, stock_code, stock_name, created_at, updated_at')
       .order('created_at', { ascending: false });
 
     if (category && category !== 'all') {
       query = query.eq('category', category);
     }
+    if (stockCode) {
+      query = query.eq('stock_code', stockCode);
+    }
     if (search) {
-      query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`);
+      query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%,stock_code.ilike.%${search}%,stock_name.ilike.%${search}%`);
     }
 
     const { data, error } = await query.limit(100);
@@ -33,7 +37,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, content, category, tags } = body;
+    const { title, content, category, tags, stock_code, stock_name } = body;
 
     if (!title || !content) {
       return NextResponse.json(
@@ -50,6 +54,8 @@ export async function POST(request: NextRequest) {
         content,
         category: category || 'general',
         tags: tags || null,
+        stock_code: stock_code || null,
+        stock_name: stock_name || null,
       })
       .select()
       .single();

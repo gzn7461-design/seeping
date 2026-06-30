@@ -5,9 +5,8 @@ import {
   FileText,
   CalendarClock,
   CheckCircle2,
-  AlertCircle,
-  Clock,
-  ListTodo,
+  XCircle,
+  Sparkles,
 } from 'lucide-react';
 import { StatCard } from '@/components/stat-card';
 import { StatusBadge } from '@/components/status-badge';
@@ -23,6 +22,8 @@ interface DashboardData {
     content: string;
     target_url: string;
     status: string;
+    stock_name: string | null;
+    stock_code: string | null;
     scheduled_at: string;
     published_at: string | null;
   }>;
@@ -33,7 +34,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
+    const fetchData = async () => {
       try {
         const res = await fetch('/api/dashboard');
         const json = await res.json();
@@ -45,22 +46,23 @@ export default function DashboardPage() {
       } finally {
         setLoading(false);
       }
-    }
+    };
+
     fetchData();
   }, []);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-muted-foreground">加载中...</div>
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        加载中...
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-destructive">加载数据失败</div>
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        加载失败，请刷新页面重试
       </div>
     );
   }
@@ -76,7 +78,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="评论模板"
           value={data.totalTemplates}
@@ -86,7 +88,7 @@ export default function DashboardPage() {
         <StatCard
           title="待发布"
           value={data.pendingTasks}
-          icon={Clock}
+          icon={CalendarClock}
           color="warning"
         />
         <StatCard
@@ -98,53 +100,57 @@ export default function DashboardPage() {
         <StatCard
           title="发布失败"
           value={data.failedTasks}
-          icon={AlertCircle}
+          icon={XCircle}
           color="danger"
         />
       </div>
 
       {/* Recent Tasks */}
-      <div className="rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <div className="flex items-center gap-2">
-            <ListTodo className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-semibold text-foreground">最近任务</h2>
-          </div>
-          <span className="text-sm text-muted-foreground">
-            共 {data.totalTasks} 个任务
-          </span>
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground">最近任务</h2>
+          <a
+            href="/tasks"
+            className="text-sm text-primary hover:text-primary/80 transition-colors"
+          >
+            查看全部
+          </a>
         </div>
-        <div className="divide-y divide-border">
-          {data.recentTasks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <CalendarClock className="h-12 w-12 mb-3 opacity-50" />
-              <p>暂无发布任务</p>
-              <p className="text-sm mt-1">创建你的第一个定时发布任务吧</p>
-            </div>
-          ) : (
-            data.recentTasks.map((task) => (
+        {data.recentTasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-12">
+            <Sparkles className="h-10 w-10 mb-3 text-muted-foreground/50" />
+            <p className="text-muted-foreground">暂无任务</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              创建你的第一个发布任务吧
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {data.recentTasks.map((task) => (
               <div
                 key={task.id}
-                className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-muted/50"
+                className="flex items-center justify-between rounded-xl border border-border bg-card p-4 transition-shadow hover:shadow-md"
               >
                 <div className="flex-1 min-w-0 mr-4">
-                  <p className="text-sm font-medium text-foreground truncate">
+                  <div className="flex items-center gap-2 mb-1">
+                    <StatusBadge status={task.status as 'pending' | 'published' | 'failed' | 'cancelled'} />
+                    {task.stock_name && (
+                      <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                        {task.stock_name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-foreground line-clamp-1">
                     {task.content}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1 truncate">
-                    {task.target_url}
-                  </p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {new Date(task.scheduled_at).toLocaleString('zh-CN')}
-                  </span>
-                  <StatusBadge status={task.status as 'pending' | 'published' | 'failed' | 'cancelled'} />
+                <div className="text-xs text-muted-foreground text-right shrink-0">
+                  {new Date(task.scheduled_at).toLocaleString('zh-CN')}
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

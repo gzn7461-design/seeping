@@ -5,17 +5,21 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
+    const stockCode = searchParams.get('stock_code');
     const page = parseInt(searchParams.get('page') || '1', 10);
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
 
     const client = getSupabaseClient();
     let query = client
       .from('publish_tasks')
-      .select('id, template_id, content, target_url, target_platform, status, scheduled_at, published_at, error_message, created_at, updated_at')
+      .select('id, template_id, content, target_url, target_platform, status, stock_code, stock_name, scheduled_at, published_at, error_message, created_at, updated_at')
       .order('scheduled_at', { ascending: false });
 
     if (status && status !== 'all') {
       query = query.eq('status', status);
+    }
+    if (stockCode) {
+      query = query.eq('stock_code', stockCode);
     }
 
     const from = (page - 1) * pageSize;
@@ -43,7 +47,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { template_id, content, target_url, target_platform, scheduled_at } = body;
+    const { template_id, content, target_url, target_platform, scheduled_at, stock_code, stock_name } = body;
 
     if (!content || !target_url || !scheduled_at) {
       return NextResponse.json(
@@ -59,9 +63,11 @@ export async function POST(request: NextRequest) {
         template_id: template_id || null,
         content,
         target_url,
-        target_platform: target_platform || 'generic',
+        target_platform: target_platform || 'eastmoney',
         scheduled_at,
         status: 'pending',
+        stock_code: stock_code || null,
+        stock_name: stock_name || null,
       })
       .select()
       .single();

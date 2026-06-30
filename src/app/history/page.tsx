@@ -17,20 +17,13 @@ interface Task {
   target_url: string;
   target_platform: string;
   status: 'pending' | 'published' | 'failed' | 'cancelled';
+  stock_code: string | null;
+  stock_name: string | null;
   scheduled_at: string;
   published_at: string | null;
   error_message: string | null;
   created_at: string;
 }
-
-const platforms: Record<string, string> = {
-  generic: '通用',
-  weibo: '微博',
-  douyin: '抖音',
-  xiaohongshu: '小红书',
-  bilibili: 'B站',
-  zhihu: '知乎',
-};
 
 export default function HistoryPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -73,6 +66,10 @@ export default function HistoryPage() {
     }
   };
 
+  const getStockBarUrl = (stockCode: string) => {
+    return `https://guba.eastmoney.com/list,${stockCode}.html`;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -80,7 +77,7 @@ export default function HistoryPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">发布历史</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            查看所有发布任务的记录
+            查看所有发布任务记录
           </p>
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -116,13 +113,10 @@ export default function HistoryPage() {
             <thead>
               <tr className="border-b border-border bg-muted/50">
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  股票
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   评论内容
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  目标
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  平台
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   状态
@@ -142,20 +136,37 @@ export default function HistoryPage() {
                   className="transition-colors hover:bg-muted/30"
                 >
                   <td className="px-6 py-4">
-                    <p className="text-sm text-foreground line-clamp-2 max-w-xs">
-                      {task.content}
-                    </p>
+                    {task.stock_name ? (
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{task.stock_name}</p>
+                        {task.stock_code && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="text-xs text-muted-foreground">{task.stock_code}</span>
+                            <a
+                              href={getStockBarUrl(task.stock_code)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <ExternalLink className="h-3 w-3 shrink-0" />
-                      <span className="truncate max-w-40">{task.target_url}</span>
+                    <div>
+                      <p className="text-sm text-foreground line-clamp-2 max-w-xs">
+                        {task.content}
+                      </p>
+                      <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                        <span className="truncate max-w-40">{task.target_url}</span>
+                      </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-muted-foreground">
-                      {platforms[task.target_platform] || task.target_platform}
-                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={task.status} />

@@ -10,7 +10,7 @@ export async function GET(
     const client = getSupabaseClient();
     const { data, error } = await client
       .from('comment_templates')
-      .select('id, title, content, category, tags, created_at, updated_at')
+      .select('id, title, content, category, tags, stock_code, stock_name, created_at, updated_at')
       .eq('id', id)
       .maybeSingle();
 
@@ -33,7 +33,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { title, content, category, tags } = body;
+    const { title, content, category, tags, stock_code, stock_name } = body;
 
     const client = getSupabaseClient();
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -41,6 +41,8 @@ export async function PUT(
     if (content !== undefined) updateData.content = content;
     if (category !== undefined) updateData.category = category;
     if (tags !== undefined) updateData.tags = tags;
+    if (stock_code !== undefined) updateData.stock_code = stock_code;
+    if (stock_name !== undefined) updateData.stock_name = stock_name;
 
     const { data, error } = await client
       .from('comment_templates')
