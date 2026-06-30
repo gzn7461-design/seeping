@@ -183,7 +183,7 @@ export default function TemplatesPage() {
     if (!aiForm.stock_name) return;
 
     setAiGenerating(true);
-    setAiContent('');
+    setAiContent(''); // Clear previous content before generating
 
     try {
       const res = await fetch('/api/generate-comment', {
@@ -553,8 +553,18 @@ export default function TemplatesPage() {
               <Button variant="outline" onClick={() => setAiDialogOpen(false)}>
                 取消
               </Button>
+              {aiContent && (
+                <Button
+                  variant="outline"
+                  onClick={handleAiGenerate}
+                  disabled={aiGenerating}
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {aiGenerating ? '重新生成中...' : '重新生成'}
+                </Button>
+              )}
               {aiContent ? (
-                <Button onClick={useAiContent}>
+                <Button onClick={useAiContent} disabled={aiGenerating}>
                   <Check className="h-4 w-4 mr-2" />
                   使用此内容
                 </Button>
