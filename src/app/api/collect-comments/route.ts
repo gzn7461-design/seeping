@@ -3,66 +3,120 @@ import { getSupabaseClient } from "@/storage/database/supabase-client";
 import { stockComments } from "@/storage/database/shared/schema";
 import { eq, desc } from "drizzle-orm";
 
-// 东方财富股吧评论 API
+// 东方财富股吧评论采集 - 使用网页解析方式
 async function fetchEastmoneyComments(stockCode: string, page: number = 1, pageSize: number = 30) {
-  // 东方财富股吧 API - 获取帖子列表
-  // 参考: https://guba.eastmoney.com/interface/GetData.aspx
-  const url = `https://guba.eastmoney.com/interface/GetData.aspx`;
+  // 东方财富股吧网页URL
+  // 格式: https://guba.eastmoney.com/list,{stockCode}_{page}.html
+  const url = `https://guba.eastmoney.com/list,${stockCode}_${page}.html`;
   
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': `https://guba.eastmoney.com/list,${stockCode}.html`,
-        'Accept': 'application/json, text/plain, */*',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Referer': 'https://guba.eastmoney.com/',
       },
-      body: `param=sort=1&pagesize=${pageSize}&page=${page}&code=${stockCode}`,
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      console.error(`HTTP error! status: ${response.status}`);
+      return [];
     }
 
-    const text = await response.text();
-    // 解析返回数据 - 东方财富返回的是JSON格式
-    const data = JSON.parse(text);
+    const html = await response.text();
     
-    // 东方财富API返回格式: { re: [...] } 或 { replies: [...] }
-    const comments = data?.re || data?.replies || [];
+    // 解析HTML提取评论数据
+    // 东方财富股吧的评论结构通常在特定class中
+    const comments: Array<{
+      username: string;
+      content: string;
+      time: string;
+      id: string;
+    }> = [];
     
-    if (Array.isArray(comments) && comments.length > 0) {
-      return comments.map((item: {
-        post_user?: { user_nickname?: string };
-        post_content?: string;
-        post_publish_time?: string;
-        post_id?: string;
-        post_title?: string;
-        user_id?: string;
-        userid?: string;
-      }) => {
-        // 提取用户名 - 可能在不同字段
-        const username = item.post_user?.user_nickname || 
-                        item.user_id || 
-                        item.userid || 
-                        '匿名用户';
-        
-        // 提取内容 - 可能是 post_content 或 post_title
-        const content = item.post_content || item.post_title || '';
-        
-        return {
+    // 使用正则表达式提取帖子数据
+    // 东方财富股吧的帖子通常包含以下信息：
+    // - 帖子ID (data-id 或 class中的数字)
+    // - 用户名
+    // - 内容/标题
+    // - 发布时间
+    
+    // 提取帖子列表 - 匹配常见的帖子结构
+    const postPattern = /<div[^>]*class="[^"]*list-item[^"]*"[^>]*data-id="(\d+)"[^>]*>([\s\S]*?)<\/div>/g;
+    let match;
+    
+    while ((match = postPattern.exec(html)) !== null && comments.length < pageSize) {
+      const postId = match[1];
+      const postHtml = match[2];
+      
+      // 提取用户名
+      const usernameMatch = postHtml.match(/class="[^"]*user[_-]?name[^"]*"[^>]*>([^<]+)</i) ||
+                           postHtml.match(/class="[^"]*nickname[^"]*"[^>]*>([^<]+)</i) ||
+                           postHtml.match(/<a[^>]*class="[^"]*user[^"]*"[^>]*>([^<]+)</i);
+      const username = usernameMatch ? usernameMatch[1].trim() : '匿名用户';
+      
+      // 提取内容/标题
+      const contentMatch = postHtml.match(/class="[^"]*title[^"]*"[^>]*>([^<]+)</i) ||
+                          postHtml.match(/class="[^"]*content[^"]*"[^>]*>([^<]+)</i) ||
+                          postHtml.match(/<a[^>]*class="[^"]*topic[^"]*"[^>]*>([^<]+)</i);
+      const content = contentMatch ? contentMatch[1].trim() : '';
+      
+      // 提取时间
+      const timeMatch = postHtml.match(/class="[^"]*time[^"]*"[^>]*>([^<]+)</i) ||
+                       postHtml.match(/class="[^"]*date[^"]*"[^>]*>([^<]+)</i) ||
+                       postHtml.match(/(\d{2}-\d{2}\s+\d{2}:\d{2})/);
+      const time = timeMatch ? timeMatch[1].trim() : new Date().toISOString();
+      
+      if (content) {
+        comments.push({
           username,
           content,
-          time: item.post_publish_time || new Date().toISOString(),
-          id: item.post_id || `post_${Date.now()}_${Math.random()}`,
-        };
-      });
+          time,
+          id: postId,
+        });
+      }
     }
-    return [];
+    
+    // 如果正则表达式没有匹配到，尝试使用更宽松的匹配
+    if (comments.length === 0) {
+      // 尝试匹配所有包含帖子信息的div
+      const loosePattern = /<div[^>]*>([\s\S]*?)<\/div>/g;
+      const allDivs: string[] = [];
+      let looseMatch;
+      
+      while ((looseMatch = loosePattern.exec(html)) !== null) {
+        allDivs.push(looseMatch[1]);
+      }
+      
+      // 从所有div中提取可能的帖子信息
+      for (const div of allDivs) {
+        if (comments.length >= pageSize) break;
+        
+        // 检查是否包含帖子特征
+        if (div.includes('post_') || div.includes('topic') || div.includes('title')) {
+          // 提取可能的用户名
+          const userMatch = div.match(/>([^<]{2,20})<\/(?:a|span)>/);
+          // 提取可能的内容
+          const contentMatch = div.match(/>([^<]{5,100})<\/(?:a|span|div)>/);
+          
+          if (contentMatch && contentMatch[1].length > 5) {
+            comments.push({
+              username: userMatch ? userMatch[1].trim() : '匿名用户',
+              content: contentMatch[1].trim(),
+              time: new Date().toISOString(),
+              id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            });
+          }
+        }
+      }
+    }
+    
+    console.log(`Parsed ${comments.length} comments from HTML`);
+    return comments;
   } catch (error) {
     console.error('Failed to fetch comments from Eastmoney:', error);
-    // 返回空数组，不再使用模拟数据
     return [];
   }
 }
@@ -109,7 +163,7 @@ export async function POST(request: NextRequest) {
         data: {
           collected: 0,
           comments: [],
-          message: '未获取到评论数据，可能是网络问题或该股票暂无评论。请检查股票代码是否正确，或稍后重试。',
+          message: '未获取到评论数据。东方财富股吧可能有反爬虫机制，建议稍后重试或手动添加评论数据。',
         },
       });
     }
@@ -122,7 +176,6 @@ export async function POST(request: NextRequest) {
       const analysis = simpleSentimentAnalysis(comment.content);
       
       // 生成评论URL（东方财富股吧帖子链接格式）
-      // 格式: https://guba.eastmoney.com/{stock_code},{post_id}.html
       const sourceUrl = `https://guba.eastmoney.com/${stock_code},${comment.id}.html`;
       
       // 保存到数据库
