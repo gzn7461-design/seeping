@@ -34,15 +34,68 @@ export async function GET() {
 
     if (recentError) throw new Error(`查询最近任务失败: ${recentError.message}`);
 
+    // Get comment statistics
+    const { count: totalComments, error: commentsError } = await client
+      .from('stock_comments')
+      .select('*', { count: 'exact', head: true });
+
+    if (commentsError) throw new Error(`查询评论失败: ${commentsError.message}`);
+
+    // Get sentiment distribution
+    const { data: sentimentData, error: sentimentError } = await client
+      .from('stock_comments')
+      .select('sentiment')
+      .limit(10000);
+
+    if (sentimentError) throw new Error(`查询情感分布失败: ${sentimentError.message}`);
+
+    const positiveCount = sentimentData?.filter((c: { sentiment: string }) => c.sentiment === 'positive').length ?? 0;
+    const neutralCount = sentimentData?.filter((c: { sentiment: string }) => c.sentiment === 'neutral').length ?? 0;
+    const negativeCount = sentimentData?.filter((c: { sentiment: string }) => c.sentiment === 'negative').length ?? 0;
+
+    // Get sensitive word alerts
+    const { count: sensitiveAlerts, error: sensitiveError } = await client
+      .from('stock_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('has_sensitive_words', 'true');
+
+    if (sensitiveError) throw new Error(`查询敏感字预警失败: ${sensitiveError.message}`);
+
+    // Get unprocessed alerts
+    const { count: unprocessedAlerts, error: unprocessedError } = await client
+      .from('stock_comments')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_processed', 'false')
+      .or('sentiment.eq.negative,has_sensitive_words.eq.true');
+
+    if (unprocessedError) throw new Error(`查询未处理预警失败: ${unprocessedError.message}`);
+
+    // Get alert configs count
+    const { count: alertConfigs, error: alertConfigError } = await client
+      .from('alert_configs')
+      .select('*', { count: 'exact', head: true });
+
+    if (alertConfigError) throw new Error(`查询预警配置失败: ${alertConfigError.message}`);
+
     return NextResponse.json({
       success: true,
       data: {
+        // 评论管理
         totalTemplates: templateCount ?? 0,
         totalTasks,
         pendingTasks,
         publishedTasks,
         failedTasks,
         recentTasks: recentTasks ?? [],
+        // 舆情监控
+        totalComments: totalComments ?? 0,
+        positiveCount,
+        neutralCount,
+        negativeCount,
+        // 预警管理
+        sensitiveAlerts: sensitiveAlerts ?? 0,
+        unprocessedAlerts: unprocessedAlerts ?? 0,
+        alertConfigs: alertConfigs ?? 0,
       },
     });
   } catch (err) {

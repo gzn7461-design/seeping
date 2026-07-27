@@ -98,11 +98,16 @@ export default function AlertsCenterPage() {
     stock_name: "",
     negative_threshold: "30",
     wecom_webhook: "",
+    alert_types: ["negative", "sensitive_word"],
   });
 
   // 评论上传
   const [uploadStockCode, setUploadStockCode] = useState("");
   const [uploadStockName, setUploadStockName] = useState("");
+
+  // 评论详情
+  const [showCommentDetail, setShowCommentDetail] = useState(false);
+  const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
 
   useEffect(() => {
     fetchAlertData();
@@ -195,7 +200,10 @@ export default function AlertsCenterPage() {
       const res = await fetch("/api/alerts/configs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(configForm),
+        body: JSON.stringify({
+          ...configForm,
+          alert_types: configForm.alert_types.join(","),
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -482,7 +490,7 @@ export default function AlertsCenterPage() {
               </Card>
             </Link>
 
-            <Link href="/dashboard">
+            <Link href="/">
               <Card className="hover:bg-gray-50 cursor-pointer transition-colors">
                 <CardContent className="pt-6">
                   <BarChart3 className="h-8 w-8 text-purple-500 mb-2" />
@@ -552,7 +560,14 @@ export default function AlertsCenterPage() {
               ) : (
                 <div className="space-y-4">
                   {comments.slice(0, 20).map((comment) => (
-                    <div key={comment.id} className="border rounded-lg p-4 space-y-2">
+                    <div
+                      key={comment.id}
+                      className="border rounded-lg p-4 space-y-2 cursor-pointer hover:bg-gray-50"
+                      onClick={() => {
+                        setSelectedComment(comment);
+                        setShowCommentDetail(true);
+                      }}
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           {getSentimentBadge(comment.sentiment)}
@@ -663,6 +678,58 @@ export default function AlertsCenterPage() {
                         <p className="text-sm text-gray-500">
                           在企业微信群中添加机器人后获取 Webhook 地址
                         </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>预警类型</Label>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="alert_negative"
+                              checked={configForm.alert_types.includes("negative")}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setConfigForm({
+                                    ...configForm,
+                                    alert_types: [...configForm.alert_types, "negative"],
+                                  });
+                                } else {
+                                  setConfigForm({
+                                    ...configForm,
+                                    alert_types: configForm.alert_types.filter((t) => t !== "negative"),
+                                  });
+                                }
+                              }}
+                            />
+                            <label htmlFor="alert_negative" className="text-sm">
+                              差评预警（差评占比超过阈值）
+                            </label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id="alert_sensitive"
+                              checked={configForm.alert_types.includes("sensitive_word")}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setConfigForm({
+                                    ...configForm,
+                                    alert_types: [...configForm.alert_types, "sensitive_word"],
+                                  });
+                                } else {
+                                  setConfigForm({
+                                    ...configForm,
+                                    alert_types: configForm.alert_types.filter((t) => t !== "sensitive_word"),
+                                  });
+                                }
+                              }}
+                            />
+                            <label htmlFor="alert_sensitive" className="text-sm">
+                              敏感字预警（检测到敏感字）
+                            </label>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="flex justify-end gap-2">
@@ -819,6 +886,159 @@ export default function AlertsCenterPage() {
           </Tabs>
         </TabsContent>
       </Tabs>
+
+      {/* 评论详情弹窗 */}
+      <Dialog open={showCommentDetail} onOpenChange={setShowCommentDetail}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>评论详情</DialogTitle>
+          </DialogHeader>
+          {selectedComment && (
+            <div className="space-y-4">
+              {/* 基本信息 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-gray-500">作者</div>
+                  <div className="font-medium">{selectedComment.username}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">股票</div>
+                  <div className="font-medium">
+                    {selectedComment.stock_name} ({selectedComment.stock_code})
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">评论时间</div>
+                  <div className="font-medium">
+                    {formatTime(selectedComment.comment_time)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">情感分类</div>
+                  <div className="mt-1">
+                    {getSentimentBadge(selectedComment.sentiment)}
+                  </div>
+                </div>
+              </div>
+
+              {/* 主评论 */}
+              <div>
+                <div className="text-sm text-gray-500 mb-2">主评论</div>
+                <div className="bg-gray-50 p-3 rounded-lg text-sm">
+                  {selectedComment.comment_content}
+                </div>
+              </div>
+
+              {/* 敏感字信息 */}
+              {selectedComment.has_sensitive_words === "true" && (
+                <div>
+                  <div className="text-sm text-gray-500 mb-2">敏感字</div>
+                  <Badge variant="destructive">{selectedComment.sensitive_words}</Badge>
+                </div>
+              )}
+
+              {/* AI分析 */}
+              {selectedComment.ai_analysis && (
+                <div>
+                  <div className="text-sm text-gray-500 mb-2">AI分析</div>
+                  <div className="bg-blue-50 p-3 rounded-lg space-y-2">
+                    {typeof selectedComment.ai_analysis === "string" ? (
+                      <div className="text-sm whitespace-pre-wrap">
+                        {selectedComment.ai_analysis}
+                      </div>
+                    ) : (
+                      <>
+                        {selectedComment.ai_analysis.sentiment_label && (
+                          <div>
+                            <span className="text-xs text-gray-500">情感判断：</span>
+                            <Badge
+                              variant={
+                                selectedComment.ai_analysis.sentiment_label === "positive"
+                                  ? "default"
+                                  : selectedComment.ai_analysis.sentiment_label === "negative"
+                                  ? "destructive"
+                                  : "secondary"
+                              }
+                            >
+                              {selectedComment.ai_analysis.sentiment_label === "positive"
+                                ? "好评"
+                                : selectedComment.ai_analysis.sentiment_label === "negative"
+                                ? "差评"
+                                : "一般"}
+                            </Badge>
+                          </div>
+                        )}
+                        {selectedComment.ai_analysis.sentiment_score !== undefined && (
+                          <div>
+                            <span className="text-xs text-gray-500">情感评分：</span>
+                            <span className="text-sm font-medium">
+                              {selectedComment.ai_analysis.sentiment_score}
+                            </span>
+                          </div>
+                        )}
+                        {selectedComment.ai_analysis.reason && (
+                          <div>
+                            <span className="text-xs text-gray-500">分析依据：</span>
+                            <div className="text-sm mt-1">
+                              {selectedComment.ai_analysis.reason}
+                            </div>
+                          </div>
+                        )}
+                        {selectedComment.ai_analysis.keywords && (
+                          <div>
+                            <span className="text-xs text-gray-500">关键词：</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {selectedComment.ai_analysis.keywords.map(
+                                (keyword: string, index: number) => (
+                                  <Badge key={index} variant="outline">
+                                    {keyword}
+                                  </Badge>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {selectedComment.ai_analysis.suggestion && (
+                          <div>
+                            <span className="text-xs text-gray-500">投资建议：</span>
+                            <div className="text-sm mt-1">
+                              {selectedComment.ai_analysis.suggestion}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 处理状态 */}
+              <div className="flex items-center justify-between pt-2 border-t">
+                <div>
+                  {selectedComment.is_processed === "true" ? (
+                    <Badge variant="secondary">已处理</Badge>
+                  ) : (
+                    <Badge variant="outline">未处理</Badge>
+                  )}
+                </div>
+                {(selectedComment.sentiment === "negative" ||
+                  selectedComment.has_sensitive_words === "true") &&
+                  selectedComment.is_processed !== "true" && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        handleProcessComment(selectedComment.id);
+                        setShowCommentDetail(false);
+                      }}
+                    >
+                      标记已处理
+                    </Button>
+                  )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
