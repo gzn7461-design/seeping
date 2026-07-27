@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity, Plus, Upload, BarChart3, Calendar, Send } from "lucide-react";
+import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity, Plus, Upload, BarChart3, Calendar, Send, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 interface AlertRecord {
@@ -32,6 +32,7 @@ interface AlertConfig {
   stock_name: string;
   negative_threshold: string;
   wecom_webhook: string;
+  alert_types?: string;
   is_active: string;
   created_at: string;
 }
@@ -93,6 +94,7 @@ export default function AlertsCenterPage() {
 
   // 预警配置表单
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
   const [configForm, setConfigForm] = useState({
     stock_code: "",
     stock_name: "",
@@ -200,8 +202,11 @@ export default function AlertsCenterPage() {
 
   const handleSaveConfig = async () => {
     try {
-      const res = await fetch("/api/alerts/configs", {
-        method: "POST",
+      const url = editingConfigId ? `/api/alerts/configs/${editingConfigId}` : "/api/alerts/configs";
+      const method = editingConfigId ? "PUT" : "POST";
+      
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...configForm,
@@ -210,8 +215,9 @@ export default function AlertsCenterPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert("预警配置保存成功");
+        alert(editingConfigId ? "预警配置更新成功" : "预警配置保存成功");
         setShowConfigDialog(false);
+        setEditingConfigId(null);
         fetchAlertData();
       } else {
         alert(data.error || "保存失败");
@@ -219,6 +225,39 @@ export default function AlertsCenterPage() {
     } catch (error) {
       console.error("保存预警配置失败:", error);
       alert("保存失败");
+    }
+  };
+
+  const handleEditConfig = (config: AlertConfig) => {
+    setEditingConfigId(config.id);
+    setConfigForm({
+      stock_code: config.stock_code,
+      stock_name: config.stock_name,
+      negative_threshold: config.negative_threshold,
+      wecom_webhook: config.wecom_webhook,
+      alert_types: config.alert_types ? config.alert_types.split(",") : ["negative", "sensitive_word"],
+    });
+    setShowConfigDialog(true);
+  };
+
+  const handleDeleteConfig = async (configId: string) => {
+    if (!confirm("确定要删除这个预警配置吗？")) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/alerts/configs/${configId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("预警配置删除成功");
+        fetchAlertData();
+      } else {
+        alert(data.error || "删除失败");
+      }
+    } catch (error) {
+      console.error("删除预警配置失败:", error);
+      alert("删除失败");
     }
   };
 
@@ -833,13 +872,38 @@ export default function AlertsCenterPage() {
                             {config.stock_name} ({config.stock_code})
                           </span>
                         </div>
-                        <span className="text-sm text-gray-500">
-                          阈值：{config.negative_threshold}%
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">
+                            阈值：{config.negative_threshold}%
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditConfig(config)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteConfig(config.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                       <div className="text-sm text-gray-500">
                         Webhook：{config.wecom_webhook.substring(0, 50)}...
                       </div>
+                      {config.alert_types && (
+                        <div className="flex gap-2">
+                          {config.alert_types.split(",").map((type: string) => (
+                            <Badge key={type} variant="outline" className="text-xs">
+                              {type === "negative" ? "差评预警" : type === "sensitive_word" ? "敏感字预警" : type}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
