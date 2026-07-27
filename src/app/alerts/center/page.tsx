@@ -179,7 +179,10 @@ export default function AlertsCenterPage() {
 
   const fetchComments = async () => {
     try {
-      const res = await fetch("/api/comments?limit=100");
+      // 获取今日的数据
+      const today = new Date();
+      const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const res = await fetch(`/api/comments?limit=100&date=${startDate.toISOString()}`);
       const data = await res.json();
       if (data.success) {
         setComments(data.data || []);
@@ -941,73 +944,101 @@ export default function AlertsCenterPage() {
               {selectedComment.ai_analysis && (
                 <div>
                   <div className="text-sm text-gray-500 mb-2">AI分析</div>
-                  <div className="bg-blue-50 p-3 rounded-lg space-y-2">
-                    {typeof selectedComment.ai_analysis === "string" ? (
-                      <div className="text-sm whitespace-pre-wrap">
-                        {selectedComment.ai_analysis}
-                      </div>
-                    ) : (
-                      <>
-                        {selectedComment.ai_analysis.sentiment_label && (
-                          <div>
-                            <span className="text-xs text-gray-500">情感判断：</span>
-                            <Badge
-                              variant={
-                                selectedComment.ai_analysis.sentiment_label === "positive"
-                                  ? "default"
-                                  : selectedComment.ai_analysis.sentiment_label === "negative"
-                                  ? "destructive"
-                                  : "secondary"
-                              }
-                            >
-                              {selectedComment.ai_analysis.sentiment_label === "positive"
-                                ? "好评"
-                                : selectedComment.ai_analysis.sentiment_label === "negative"
-                                ? "差评"
-                                : "一般"}
-                            </Badge>
-                          </div>
-                        )}
-                        {selectedComment.ai_analysis.sentiment_score !== undefined && (
-                          <div>
-                            <span className="text-xs text-gray-500">情感评分：</span>
-                            <span className="text-sm font-medium">
-                              {selectedComment.ai_analysis.sentiment_score}
-                            </span>
-                          </div>
-                        )}
-                        {selectedComment.ai_analysis.reason && (
-                          <div>
-                            <span className="text-xs text-gray-500">分析依据：</span>
-                            <div className="text-sm mt-1">
-                              {selectedComment.ai_analysis.reason}
+                  <div className="bg-blue-50 p-4 rounded-lg space-y-3">
+                    {(() => {
+                      let analysis: any = selectedComment.ai_analysis;
+                      if (typeof analysis === "string") {
+                        try {
+                          analysis = JSON.parse(analysis);
+                        } catch {
+                          return <div className="text-sm whitespace-pre-wrap">{analysis}</div>;
+                        }
+                      }
+                      return (
+                        <>
+                          {/* 情感判断 */}
+                          {analysis.sentiment_label && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-600 font-medium">情感判断：</span>
+                              <Badge
+                                variant={
+                                  analysis.sentiment_label === "positive"
+                                    ? "default"
+                                    : analysis.sentiment_label === "negative"
+                                    ? "destructive"
+                                    : "secondary"
+                                }
+                              >
+                                {analysis.sentiment_label === "positive"
+                                  ? "好评"
+                                  : analysis.sentiment_label === "negative"
+                                  ? "差评"
+                                  : "一般"}
+                              </Badge>
                             </div>
-                          </div>
-                        )}
-                        {selectedComment.ai_analysis.keywords && (
-                          <div>
-                            <span className="text-xs text-gray-500">关键词：</span>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {selectedComment.ai_analysis.keywords.map(
-                                (keyword: string, index: number) => (
-                                  <Badge key={index} variant="outline">
+                          )}
+                          {/* 情感评分 */}
+                          {analysis.sentiment_score !== undefined && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-600 font-medium">情感评分：</span>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                    <div
+                                      className={`h-2 rounded-full ${
+                                        analysis.sentiment_score > 0.7
+                                          ? "bg-green-500"
+                                          : analysis.sentiment_score > 0.4
+                                          ? "bg-yellow-500"
+                                          : "bg-red-500"
+                                      }`}
+                                      style={{ width: `${analysis.sentiment_score * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-sm font-medium text-gray-700">
+                                    {(analysis.sentiment_score * 100).toFixed(0)}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {/* 分析依据 */}
+                          {analysis.reason && (
+                            <div>
+                              <div className="text-xs text-gray-600 font-medium mb-1">分析依据：</div>
+                              <div className="text-sm text-gray-700 bg-white p-2 rounded border border-gray-200">
+                                {analysis.reason}
+                              </div>
+                            </div>
+                          )}
+                          {/* 关键词 */}
+                          {analysis.keywords && Array.isArray(analysis.keywords) && analysis.keywords.length > 0 && (
+                            <div>
+                              <div className="text-xs text-gray-600 font-medium mb-1">关键词：</div>
+                              <div className="flex flex-wrap gap-1">
+                                {analysis.keywords.map((keyword: string, index: number) => (
+                                  <span
+                                    key={index}
+                                    className="px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-700"
+                                  >
                                     {keyword}
-                                  </Badge>
-                                )
-                              )}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        {selectedComment.ai_analysis.suggestion && (
-                          <div>
-                            <span className="text-xs text-gray-500">投资建议：</span>
-                            <div className="text-sm mt-1">
-                              {selectedComment.ai_analysis.suggestion}
+                          )}
+                          {/* 投资建议 */}
+                          {analysis.suggestion && (
+                            <div>
+                              <div className="text-xs text-gray-600 font-medium mb-1">投资建议：</div>
+                              <div className="text-sm text-gray-700 bg-white p-2 rounded border border-gray-200">
+                                {analysis.suggestion}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </>
-                    )}
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

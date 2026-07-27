@@ -13,8 +13,24 @@ import {
   AlertTriangle,
   ShieldAlert,
   Bell,
+  BarChart3,
 } from 'lucide-react';
 import { StatCard } from '@/components/stat-card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 import Link from 'next/link';
 
 interface DashboardData {
@@ -43,19 +59,33 @@ interface DashboardData {
   sensitiveAlerts: number;
   unprocessedAlerts: number;
   alertConfigs: number;
+  // 图表数据
+  chartData: Array<{ date: string; positive: number; neutral: number; negative: number }>;
+  sentimentData: Array<{ name: string; value: number }>;
 }
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState('today');
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [pieData, setPieData] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/dashboard');
+        const res = await fetch(`/api/dashboard?date=${dateFilter}`);
         const json = await res.json();
         if (json.success) {
           setData(json.data);
+          // 处理图表数据
+          if (json.data.chartData) {
+            setChartData(json.data.chartData);
+          }
+          // 处理饼图数据
+          if (json.data.sentimentData) {
+            setPieData(json.data.sentimentData);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -65,7 +95,7 @@ export default function DashboardPage() {
     };
 
     fetchData();
-  }, []);
+  }, [dateFilter]);
 
   if (loading) {
     return (
@@ -86,11 +116,28 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">仪表盘</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          CommentHub 数据概览
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">仪表盘</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            CommentHub 数据概览
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-gray-500" />
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="选择日期范围" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">今日</SelectItem>
+              <SelectItem value="week">近7天</SelectItem>
+              <SelectItem value="month">近30天</SelectItem>
+              <SelectItem value="quarter">本季度</SelectItem>
+              <SelectItem value="year">本年度</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* 评论管理统计 */}
@@ -169,6 +216,70 @@ export default function DashboardPage() {
             />
           </Link>
         </div>
+      </div>
+
+      {/* 舆情图表 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 情感趋势图 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>情感趋势</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="positive" stroke="#10b981" name="好评" />
+                  <Line type="monotone" dataKey="neutral" stroke="#f59e0b" name="一般" />
+                  <Line type="monotone" dataKey="negative" stroke="#ef4444" name="差评" />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-gray-500">
+                暂无数据
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 情感分布饼图 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>情感分布</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={['#10b981', '#f59e0b', '#ef4444'][index % 3]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[300px] text-gray-500">
+                暂无数据
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* 预警管理统计 */}
