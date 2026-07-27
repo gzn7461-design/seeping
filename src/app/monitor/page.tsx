@@ -115,26 +115,18 @@ export default function MonitorPage() {
   const handleDownloadTemplate = () => {
     const templateData = [
       {
-        "股票代码": "600519",
-        "股票名称": "贵州茅台",
-        "标题": "茅台今天走势分析",
-        "作者": "股市老手",
-        "评论内容": "今天放量突破，后市看好！",
         "阅读": 1234,
         "评论": 56,
+        "标题": "茅台今天走势分析",
+        "作者": "股市老手",
         "最后更新": "2025-07-02 15:30:00",
-        "链接": "https://guba.eastmoney.com/600519,123456.html",
       },
       {
-        "股票代码": "000858",
-        "股票名称": "五粮液",
-        "标题": "五粮液基本面分析",
-        "作者": "价值投资者",
-        "评论内容": "基本面很好，长期持有",
         "阅读": 890,
         "评论": 23,
+        "标题": "五粮液基本面分析",
+        "作者": "价值投资者",
         "最后更新": "2025-07-02 14:20:00",
-        "链接": "https://guba.eastmoney.com/000858,789012.html",
       },
     ];
 
@@ -165,8 +157,8 @@ export default function MonitorPage() {
       const uploadData = jsonData.map((row) => ({
         stock_code: String(row["股票代码"] || row["stock_code"] || ""),
         stock_name: String(row["股票名称"] || row["stock_name"] || ""),
-        username: String(row["作者"] || row["username"] || row["作者"] || "匿名用户"),
-        comment_content: String(row["评论内容"] || row["content"] || row["评论"] || ""),
+        username: String(row["作者"] || row["username"] || "匿名用户"),
+        comment_content: String(row["标题"] || row["title"] || row["评论内容"] || ""),
         comment_time: String(row["最后更新"] || row["time"] || row["时间"] || new Date().toISOString()),
         source_url: String(row["链接"] || row["url"] || row["source_url"] || ""),
         read_count: Number(row["阅读"] || row["read_count"] || 0),
@@ -449,14 +441,16 @@ export default function MonitorPage() {
                     <TableHead className="w-[80px]">评论</TableHead>
                     <TableHead>标题</TableHead>
                     <TableHead className="w-[120px]">作者</TableHead>
-                    <TableHead className="w-[120px]">最后更新</TableHead>
-                    <TableHead className="w-[80px]">情感</TableHead>
-                    <TableHead className="w-[80px]">操作</TableHead>
+                    <TableHead className="w-[160px]">最后更新</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {comments.map((comment) => (
-                    <TableRow key={comment.id}>
+                    <TableRow
+                      key={comment.id}
+                      className="cursor-pointer hover:bg-gray-50"
+                      onClick={() => setSelectedComment(comment)}
+                    >
                       <TableCell className="text-sm">
                         <div className="flex items-center gap-1 text-gray-600">
                           <Eye className="h-3 w-3" />
@@ -470,7 +464,10 @@ export default function MonitorPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm font-medium">
-                        {comment.title || comment.comment_content}
+                        <div className="flex items-center gap-2">
+                          {comment.title || comment.comment_content}
+                          {getSentimentBadge(comment.sentiment)}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm">
                         <div className="flex items-center gap-1">
@@ -482,30 +479,6 @@ export default function MonitorPage() {
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {formatTime(comment.comment_time)}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getSentimentBadge(comment.sentiment)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedComment(comment)}
-                          >
-                            详情
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleAnalyze(comment.id)}
-                            disabled={analyzingId === comment.id}
-                          >
-                            {analyzingId === comment.id ? (
-                              <RefreshCw className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Brain className="h-3 w-3" />
-                            )}
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
