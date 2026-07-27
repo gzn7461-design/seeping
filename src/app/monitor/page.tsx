@@ -102,9 +102,13 @@ export default function MonitorPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [timeRange, setTimeRange] = useState<string>("day"); // day, month, quarter, half, year
+  const [chartCategory, setChartCategory] = useState<string>("all"); // all, positive, neutral, negative
   const [chartData, setChartData] = useState<any[]>([]);
   const [trendData, setTrendData] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [selectedStock, setSelectedStock] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("today");
+  const [stocks, setStocks] = useState<Array<{ id: string; stock_code: string; stock_name: string }>>([]);
   const pageSize = 50;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,6 +117,8 @@ export default function MonitorPage() {
     try {
       const params = new URLSearchParams();
       if (sentimentFilter !== "all") params.set("sentiment", sentimentFilter);
+      if (selectedStock !== "all") params.set("stock_code", selectedStock);
+      if (dateFilter !== "all") params.set("date", dateFilter);
       params.set("page", currentPage.toString());
       params.set("pageSize", pageSize.toString());
       
@@ -142,6 +148,25 @@ export default function MonitorPage() {
   useEffect(() => {
     fetchComments();
   }, [fetchComments, currentPage]);
+
+  // 加载股票列表
+  const loadStocks = useCallback(async () => {
+    try {
+      const response = await fetch("/api/stocks");
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setStocks(result.data);
+        }
+      }
+    } catch (error) {
+      console.error("加载股票列表失败:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStocks();
+  }, [loadStocks]);
 
   // 下载Excel模板
   const handleDownloadTemplate = () => {
@@ -475,33 +500,52 @@ export default function MonitorPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-medium">舆情趋势分析</CardTitle>
-                <Select value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="day">按天</SelectItem>
-                    <SelectItem value="month">按月</SelectItem>
-                    <SelectItem value="quarter">按季度</SelectItem>
-                    <SelectItem value="half">按半年</SelectItem>
-                    <SelectItem value="year">按年度</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select value={chartCategory} onValueChange={setChartCategory}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部</SelectItem>
+                      <SelectItem value="positive">好评</SelectItem>
+                      <SelectItem value="neutral">一般</SelectItem>
+                      <SelectItem value="negative">差评</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="day">按天</SelectItem>
+                      <SelectItem value="month">按月</SelectItem>
+                      <SelectItem value="quarter">按季度</SelectItem>
+                      <SelectItem value="half">按半年</SelectItem>
+                      <SelectItem value="year">按年度</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
+                  <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Area type="monotone" dataKey="positive" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="好评" />
-                    <Area type="monotone" dataKey="neutral" stackId="1" stroke="#9ca3af" fill="#9ca3af" fillOpacity={0.6} name="一般" />
-                    <Area type="monotone" dataKey="negative" stackId="1" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} name="差评" />
-                  </AreaChart>
+                    {(chartCategory === "all" || chartCategory === "positive") && (
+                      <Line type="monotone" dataKey="positive" stroke="#10b981" strokeWidth={2} dot={{ r: 4 }} name="好评" />
+                    )}
+                    {(chartCategory === "all" || chartCategory === "neutral") && (
+                      <Line type="monotone" dataKey="neutral" stroke="#9ca3af" strokeWidth={2} dot={{ r: 4 }} name="一般" />
+                    )}
+                    {(chartCategory === "all" || chartCategory === "negative") && (
+                      <Line type="monotone" dataKey="negative" stroke="#ef4444" strokeWidth={2} dot={{ r: 4 }} name="差评" />
+                    )}
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
@@ -511,7 +555,35 @@ export default function MonitorPage() {
         {/* 操作栏 */}
         <Card className="bg-white rounded-xl border-0 shadow-sm mb-6">
           <CardContent className="p-4">
-            <div className="flex gap-3 items-center">
+            <div className="flex gap-3 items-center flex-wrap">
+              {/* 股票选择 */}
+              <Select value={selectedStock} onValueChange={setSelectedStock}>
+                <SelectTrigger className="w-[180px] h-9">
+                  <SelectValue placeholder="选择股票" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部股票</SelectItem>
+                  {stocks.map((stock) => (
+                    <SelectItem key={stock.id} value={stock.stock_code}>
+                      {stock.stock_code} - {stock.stock_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* 日期选择 */}
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger className="w-[120px] h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">今天</SelectItem>
+                  <SelectItem value="week">近7天</SelectItem>
+                  <SelectItem value="month">近30天</SelectItem>
+                  <SelectItem value="all">全部</SelectItem>
+                </SelectContent>
+              </Select>
+
               {/* Excel上传 */}
               <input
                 ref={fileInputRef}
@@ -582,7 +654,7 @@ export default function MonitorPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">全部</SelectItem>
+                  <SelectItem value="all">全部情感</SelectItem>
                   <SelectItem value="positive">好评</SelectItem>
                   <SelectItem value="neutral">一般</SelectItem>
                   <SelectItem value="negative">差评</SelectItem>
