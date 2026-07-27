@@ -70,6 +70,7 @@ interface Comment {
   ai_analysis: any;
   has_sensitive_words: string;
   sensitive_words: string;
+  is_processed: string;
   collected_at: string;
   created_at: string;
 }
@@ -292,8 +293,20 @@ export default function AlertsCenterPage() {
 
   const handleAnalyzeAll = async () => {
     try {
+      // 获取所有未分析的评论ID
+      const unanalyzedIds = comments
+        .filter((c) => !c.sentiment || c.sentiment === "neutral")
+        .map((c) => c.id);
+
+      if (unanalyzedIds.length === 0) {
+        alert("没有需要分析的评论");
+        return;
+      }
+
       const res = await fetch("/api/comments/batch-analyze", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comment_ids: unanalyzedIds }),
       });
       const data = await res.json();
       if (data.success) {
@@ -308,6 +321,45 @@ export default function AlertsCenterPage() {
       alert("分析失败");
     }
   };
+
+  const handleProcessComment = async (commentId: string) => {
+    try {
+      const res = await fetch(`/api/comments/${commentId}/process`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("已标记为已处理");
+        fetchComments();
+      } else {
+        alert(data.error || "处理失败");
+      }
+    } catch (error) {
+      console.error("处理失败:", error);
+      alert("处理失败");
+    }
+  };
+
+  // 定时检查未处理的差评和敏感词（每30分钟）
+  useEffect(() => {
+    const checkUnprocessed = async () => {
+      try {
+        await fetch("/api/alerts/check-unprocessed", {
+          method: "POST",
+        });
+      } catch (error) {
+        console.error("定时检查失败:", error);
+      }
+    };
+
+    // 立即执行一次
+    checkUnprocessed();
+
+    // 每30分钟执行一次
+    const interval = setInterval(checkUnprocessed, 30 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -514,9 +566,23 @@ export default function AlertsCenterPage() {
                             {comment.username}
                           </span>
                         </div>
-                        <span className="text-sm text-gray-500">
-                          {formatTime(comment.comment_time)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">
+                            {formatTime(comment.comment_time)}
+                          </span>
+                          {(comment.sentiment === "negative" || comment.has_sensitive_words === "true") && comment.is_processed !== "true" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleProcessComment(comment.id)}
+                            >
+                              标记已处理
+                            </Button>
+                          )}
+                          {comment.is_processed === "true" && (
+                            <Badge variant="secondary">已处理</Badge>
+                          )}
+                        </div>
                       </div>
                       <div className="text-sm text-gray-600">
                         {comment.comment_content}
