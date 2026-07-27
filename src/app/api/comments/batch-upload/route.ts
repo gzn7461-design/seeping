@@ -6,6 +6,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { comments } = body;
 
+    console.log("收到上传请求，评论数量:", comments?.length);
+
     if (!comments || !Array.isArray(comments) || comments.length === 0) {
       return NextResponse.json(
         { success: false, error: "评论数据不能为空" },
@@ -15,8 +17,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseClient();
     const uploadedComments = [];
+    const errors = [];
 
-    for (const comment of comments) {
+    for (let i = 0; i < comments.length; i++) {
+      const comment = comments[i];
+      console.log(`处理第${i + 1}条评论:`, comment);
+
       const {
         stock_code,
         stock_name,
@@ -68,28 +74,37 @@ export async function POST(request: NextRequest) {
         title: title || null,
       };
 
+      console.log("准备插入数据:", newComment);
+
       const { data, error } = await supabase
         .from("stock_comments")
         .insert(newComment)
         .select()
         .single();
 
-      if (!error && data) {
+      if (error) {
+        console.error(`第${i + 1}条评论插入失败:`, error);
+        errors.push({ index: i, error: error.message });
+      } else if (data) {
+        console.log(`第${i + 1}条评论插入成功:`, data.id);
         uploadedComments.push(data);
       }
     }
+
+    console.log(`上传完成: 成功${uploadedComments.length}条, 失败${errors.length}条`);
 
     return NextResponse.json({
       success: true,
       data: {
         uploaded: uploadedComments.length,
-        comments: uploadedComments,
+        failed: errors.length,
+        errors: errors.length > 0 ? errors : undefined,
       },
     });
   } catch (error) {
-    console.error("Failed to batch upload comments:", error);
+    console.error("批量上传评论失败:", error);
     return NextResponse.json(
-      { success: false, error: "批量上传失败" },
+      { success: false, error: "服务器内部错误" },
       { status: 500 }
     );
   }
