@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabaseClient();
     const uploadedComments = [];
     const errors = [];
+    const duplicateComments = [];
 
     for (let i = 0; i < comments.length; i++) {
       const comment = comments[i];
@@ -90,6 +91,41 @@ export async function POST(request: NextRequest) {
         reply_count,
         title,
       } = comment;
+
+      // 查重：检查是否已存在相同作者和主评论的记录
+      const { data: existingComments, error: queryError } = await supabase
+        .from("stock_comments")
+        .select("id, comment_time")
+        .eq("username", username || "匿名用户")
+        .eq("comment_content", comment_content || "")
+        .limit(1);
+
+      if (queryError) {
+        console.error(`第${i + 1}条评论查询失败:`, queryError);
+        errors.push({ index: i, error: queryError.message });
+        continue;
+      }
+
+      // 如果存在重复记录，比较时间，保留最新的
+      if (existingComments && existingComments.length > 0) {
+        const existingComment = existingComments[0];
+        const newTime = parseCommentTime(comment_time);
+        const existingTime = existingComment.comment_time;
+
+        if (newTime > existingTime) {
+          // 新评论时间更新，删除旧记录
+          await supabase
+            .from("stock_comments")
+            .delete()
+            .eq("id", existingComment.id);
+          console.log(`删除旧评论: ${existingComment.id}`);
+        } else {
+          // 旧评论时间更新，跳过新评论
+          console.log(`跳过重复评论: ${username} - ${comment_content?.substring(0, 20)}...`);
+          duplicateComments.push({ index: i, reason: "重复评论，旧记录时间更新" });
+          continue;
+        }
+      }
 
       // 简单的情感分析（基于关键词）
       let sentiment = "neutral";
@@ -152,7 +188,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`上传完成: 成功${uploadedComments.length}条, 失败${errors.length}条`);
+    console.log(`上传完成: 成功${uploadedComments.length}条, 失败${errors.length}条, 重复${duplicateComments.length}条`);
 
     // 对包含敏感字的评论发送预警通知
     const sensitiveComments = uploadedComments.filter(
@@ -207,6 +243,7 @@ export async function POST(request: NextRequest) {
       data: {
         uploaded: uploadedComments.length,
         failed: errors.length,
+        duplicate: duplicateComments.length,
         sensitiveCount: sensitiveComments.length,
         errors: errors.length > 0 ? errors : undefined,
       },

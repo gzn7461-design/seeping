@@ -38,3 +38,28 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    const supabase = await getSupabaseClient();
+    const { error } = await supabase
+      .from("stock_comments")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("删除评论失败:", error);
+    return NextResponse.json(
+      { success: false, error: "删除失败" },
+      { status: 500 }
+    );
+  }
+}

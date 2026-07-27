@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity, Plus, Upload, BarChart3, Calendar } from "lucide-react";
+import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity, Plus, Upload, BarChart3, Calendar, Send } from "lucide-react";
 import Link from "next/link";
 
 interface AlertRecord {
@@ -290,7 +290,14 @@ export default function AlertsCenterPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`成功上传 ${data.data.success} 条评论`);
+        let msg = `成功上传 ${data.data.uploaded} 条评论`;
+        if (data.data.duplicate > 0) {
+          msg += `，发现并更新 ${data.data.duplicate} 条重复评论`;
+        }
+        if (data.data.sensitiveCount > 0) {
+          msg += `，其中 ${data.data.sensitiveCount} 条包含敏感字`;
+        }
+        alert(msg);
         fetchComments();
         fetchAlertData();
       } else {
@@ -348,6 +355,50 @@ export default function AlertsCenterPage() {
     } catch (error) {
       console.error("处理失败:", error);
       alert("处理失败");
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm("确定要删除这条评论吗？此操作不可恢复。")) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/comments/${commentId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("删除成功");
+        fetchComments();
+        fetchAlertData();
+      } else {
+        alert(data.error || "删除失败");
+      }
+    } catch (error) {
+      console.error("删除失败:", error);
+      alert("删除失败");
+    }
+  };
+
+  const handleTestAlert = async () => {
+    if (!confirm("确定要发送预警测试消息吗？将向所有活跃配置的企业微信机器人发送测试消息。")) {
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/alerts/test", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || "测试消息发送完成");
+      } else {
+        alert(data.error || "测试失败");
+      }
+    } catch (error) {
+      console.error("测试失败:", error);
+      alert("测试失败");
     }
   };
 
@@ -592,7 +643,10 @@ export default function AlertsCenterPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleProcessComment(comment.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleProcessComment(comment.id);
+                              }}
                             >
                               标记已处理
                             </Button>
@@ -600,6 +654,17 @@ export default function AlertsCenterPage() {
                           {comment.is_processed === "true" && (
                             <Badge variant="secondary">已处理</Badge>
                           )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteComment(comment.id);
+                            }}
+                          >
+                            删除
+                          </Button>
                         </div>
                       </div>
                       <div className="text-sm text-gray-600">
@@ -627,13 +692,18 @@ export default function AlertsCenterPage() {
                   <CardTitle>预警配置</CardTitle>
                   <CardDescription>配置差评阈值，超过阈值自动通过企业微信机器人推送预警</CardDescription>
                 </div>
-                <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      添加配置
-                    </Button>
-                  </DialogTrigger>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleTestAlert}>
+                    <Send className="h-4 w-4 mr-2" />
+                    测试机器人
+                  </Button>
+                  <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        添加配置
+                      </Button>
+                    </DialogTrigger>
                   <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
                       <DialogTitle>添加预警配置</DialogTitle>
@@ -745,7 +815,8 @@ export default function AlertsCenterPage() {
                   </DialogContent>
                 </Dialog>
               </div>
-            </CardHeader>
+            </div>
+          </CardHeader>
             <CardContent>
               {alertConfigs.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">暂无预警配置</div>
@@ -776,8 +847,6 @@ export default function AlertsCenterPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* 预警记录 */}
         <TabsContent value="records" className="space-y-4">
           <Tabs defaultValue="all">
             <TabsList>
