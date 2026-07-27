@@ -108,6 +108,8 @@ export default function MonitorPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedStock, setSelectedStock] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("today");
+  const [customDate, setCustomDate] = useState<string>("");
+  const [uploadStockCode, setUploadStockCode] = useState<string>("");
   const [stocks, setStocks] = useState<Array<{ id: string; stock_code: string; stock_name: string }>>([]);
   const pageSize = 50;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -118,7 +120,11 @@ export default function MonitorPage() {
       // 获取统计数据（不受分页影响）
       const statsParams = new URLSearchParams();
       if (selectedStock !== "all") statsParams.set("stock_code", selectedStock);
-      if (dateFilter !== "all") statsParams.set("date", dateFilter);
+      if (dateFilter === "custom" && customDate) {
+        statsParams.set("date", customDate);
+      } else if (dateFilter !== "all" && dateFilter !== "custom") {
+        statsParams.set("date", dateFilter);
+      }
       
       const statsRes = await fetch(`/api/comments/stats?${statsParams.toString()}`);
       const statsJson = await statsRes.json();
@@ -131,7 +137,11 @@ export default function MonitorPage() {
       const params = new URLSearchParams();
       if (sentimentFilter !== "all") params.set("sentiment", sentimentFilter);
       if (selectedStock !== "all") params.set("stock_code", selectedStock);
-      if (dateFilter !== "all") params.set("date", dateFilter);
+      if (dateFilter === "custom" && customDate) {
+        params.set("date", customDate);
+      } else if (dateFilter !== "all" && dateFilter !== "custom") {
+        params.set("date", dateFilter);
+      }
       params.set("page", currentPage.toString());
       params.set("pageSize", pageSize.toString());
       
@@ -222,8 +232,8 @@ export default function MonitorPage() {
       // 批量上传评论 - 支持多种列名映射
       const uploadData = jsonData.map((row) => {
         // 尝试多种可能的列名
-        const stockCode = String(row["股票代码"] || row["stock_code"] || row["代码"] || "");
-        const stockName = String(row["股票名称"] || row["stock_name"] || row["名称"] || "");
+        const stockCode = String(row["股票代码"] || row["stock_code"] || row["代码"] || uploadStockCode || "");
+        const stockName = String(row["股票名称"] || row["stock_name"] || row["名称"] || (uploadStockCode ? stocks.find(s => s.stock_code === uploadStockCode)?.stock_name || "" : ""));
         const username = String(row["作者"] || row["username"] || row["用户名"] || "匿名用户");
         const title = String(row["主评论"] || row["标题"] || row["title"] || row["帖子标题"] || "");
         const commentContent = String(row["评论内容"] || row["content"] || row["评论"] || title);
@@ -577,7 +587,7 @@ export default function MonitorPage() {
               </Select>
 
               {/* 日期选择 */}
-              <Select value={dateFilter} onValueChange={setDateFilter}>
+              <Select value={dateFilter} onValueChange={(v) => { setDateFilter(v); setCustomDate(""); }}>
                 <SelectTrigger className="w-[120px] h-9">
                   <SelectValue />
                 </SelectTrigger>
@@ -585,7 +595,35 @@ export default function MonitorPage() {
                   <SelectItem value="today">今天</SelectItem>
                   <SelectItem value="week">近7天</SelectItem>
                   <SelectItem value="month">近30天</SelectItem>
+                  <SelectItem value="custom">自定义日期</SelectItem>
                   <SelectItem value="all">全部</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* 自定义日期选择 */}
+              {dateFilter === "custom" && (
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="h-9 px-3 rounded-md border border-input bg-background text-sm"
+                />
+              )}
+
+              {/* 股票选择 */}
+              <Select
+                value={uploadStockCode}
+                onValueChange={setUploadStockCode}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="选择股票" />
+                </SelectTrigger>
+                <SelectContent>
+                  {stocks.map((stock) => (
+                    <SelectItem key={stock.stock_code} value={stock.stock_code}>
+                      {stock.stock_code} - {stock.stock_name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -687,8 +725,9 @@ export default function MonitorPage() {
                   <TableRow>
                     <TableHead className="w-[80px]">阅读</TableHead>
                     <TableHead className="w-[80px]">评论数量</TableHead>
-                    <TableHead>主评论</TableHead>
+                    <TableHead>主评论（情感）</TableHead>
                     <TableHead className="w-[120px]">作者</TableHead>
+                    <TableHead className="w-[100px]">股票</TableHead>
                     <TableHead className="w-[160px]">最后更新</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -712,29 +751,33 @@ export default function MonitorPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm font-medium">
-                        <div>
-                          <div>{comment.comment_content || comment.title}</div>
-                          <div className="mt-1">
-                            <Select
-                              value={comment.sentiment || "neutral"}
-                              onValueChange={(value) => handleSentimentChange(comment.id, value)}
-                            >
-                              <SelectTrigger className="h-6 w-20 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="positive">好评</SelectItem>
-                                <SelectItem value="neutral">一般</SelectItem>
-                                <SelectItem value="negative">差评</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">{comment.comment_content || comment.title}</div>
+                          <Select
+                            value={comment.sentiment || "neutral"}
+                            onValueChange={(value) => handleSentimentChange(comment.id, value)}
+                          >
+                            <SelectTrigger className="h-6 w-16 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="positive">好评</SelectItem>
+                              <SelectItem value="neutral">一般</SelectItem>
+                              <SelectItem value="negative">差评</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
                         <div className="flex items-center gap-1">
                           <User className="h-3 w-3 text-gray-400" />
                           {comment.username}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <div className="text-xs">
+                          <div className="font-medium">{comment.stock_code || "-"}</div>
+                          <div className="text-gray-500 truncate max-w-[80px]">{comment.stock_name || "-"}</div>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-gray-500">
@@ -839,35 +882,77 @@ export default function MonitorPage() {
                 )}
                 {selectedComment.ai_analysis && (
                   <div>
-                    <Label className="text-sm text-gray-500">AI 分析</Label>
+                    <Label className="text-sm text-gray-500">AI 分析过程</Label>
                     <div className="mt-2 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
                       {(() => {
                         try {
                           const analysis = JSON.parse(selectedComment.ai_analysis);
                           return (
-                            <div className="space-y-3">
+                            <div className="space-y-4">
+                              {/* 分析对象 */}
+                              {analysis.target && (
+                                <div>
+                                  <span className="text-sm font-medium text-gray-700">📋 分析对象：</span>
+                                  <p className="mt-1 text-sm text-gray-600">{analysis.target}</p>
+                                </div>
+                              )}
+                              {/* 情感判断 */}
                               <div className="flex items-start gap-2">
-                                <span className="text-sm font-medium text-gray-700">情感倾向：</span>
+                                <span className="text-sm font-medium text-gray-700">🎯 情感判断：</span>
                                 {getSentimentBadge(analysis.sentiment)}
                               </div>
-                              <div>
-                                <span className="text-sm font-medium text-gray-700">分析理由：</span>
-                                <p className="mt-1 text-sm text-gray-600">{analysis.reason}</p>
-                              </div>
-                              <div>
-                                <span className="text-sm font-medium text-gray-700">关键词：</span>
-                                <div className="mt-1 flex flex-wrap gap-1">
-                                  {analysis.keywords?.map((kw: string, i: number) => (
-                                    <span key={i} className="px-2 py-0.5 bg-white rounded text-xs text-blue-600 border border-blue-200">
-                                      {kw}
-                                    </span>
-                                  ))}
+                              {/* 评分 */}
+                              {analysis.score !== undefined && (
+                                <div>
+                                  <span className="text-sm font-medium text-gray-700">📊 情感评分：</span>
+                                  <div className="mt-1 flex items-center gap-2">
+                                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                      <div 
+                                        className={`h-full ${
+                                          analysis.sentiment === 'positive' ? 'bg-green-500' : 
+                                          analysis.sentiment === 'negative' ? 'bg-red-500' : 'bg-yellow-500'
+                                        }`}
+                                        style={{ width: `${(analysis.score / 10) * 100}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-sm font-medium">{analysis.score}/10</span>
+                                  </div>
                                 </div>
-                              </div>
-                              <div>
-                                <span className="text-sm font-medium text-gray-700">投资建议：</span>
-                                <p className="mt-1 text-sm text-gray-600">{analysis.suggestion}</p>
-                              </div>
+                              )}
+                              {/* 判断依据 */}
+                              {analysis.reason && (
+                                <div>
+                                  <span className="text-sm font-medium text-gray-700">💭 判断依据：</span>
+                                  <p className="mt-1 text-sm text-gray-600 leading-relaxed">{analysis.reason}</p>
+                                </div>
+                              )}
+                              {/* 关键信息 */}
+                              {analysis.key_info && (
+                                <div>
+                                  <span className="text-sm font-medium text-gray-700">🔑 关键信息：</span>
+                                  <p className="mt-1 text-sm text-gray-600">{analysis.key_info}</p>
+                                </div>
+                              )}
+                              {/* 关键词 */}
+                              {analysis.keywords && analysis.keywords.length > 0 && (
+                                <div>
+                                  <span className="text-sm font-medium text-gray-700">🏷️ 关键词：</span>
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {analysis.keywords.map((kw: string, i: number) => (
+                                      <span key={i} className="px-2 py-0.5 bg-white rounded text-xs text-blue-600 border border-blue-200">
+                                        {kw}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {/* 投资建议 */}
+                              {analysis.suggestion && (
+                                <div>
+                                  <span className="text-sm font-medium text-gray-700">💡 投资建议：</span>
+                                  <p className="mt-1 text-sm text-gray-600 leading-relaxed">{analysis.suggestion}</p>
+                                </div>
+                              )}
                             </div>
                           );
                         } catch {
