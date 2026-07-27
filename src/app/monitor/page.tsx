@@ -43,8 +43,29 @@ import {
   FileText,
   User,
   Clock,
+  BarChart3,
+  Calendar,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+} from "recharts";
+
+type TimeRange = "day" | "month" | "quarter" | "half" | "year";
 
 interface StockComment {
   id: string;
@@ -80,6 +101,9 @@ export default function MonitorPage() {
   const [analyzingAll, setAnalyzingAll] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
+  const [timeRange, setTimeRange] = useState<string>("day"); // day, month, quarter, half, year
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [trendData, setTrendData] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 50;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -124,15 +148,15 @@ export default function MonitorPage() {
     const templateData = [
       {
         "阅读": 1234,
-        "评论": 56,
-        "标题": "茅台今天走势分析",
+        "评论数量": 56,
+        "主评论": "茅台今天走势分析",
         "作者": "股市老手",
         "最后更新": "2025-07-02 15:30:00",
       },
       {
         "阅读": 890,
-        "评论": 23,
-        "标题": "五粮液基本面分析",
+        "评论数量": 23,
+        "主评论": "五粮液基本面分析",
         "作者": "价值投资者",
         "最后更新": "2025-07-02 14:20:00",
       },
@@ -171,12 +195,12 @@ export default function MonitorPage() {
         const stockCode = String(row["股票代码"] || row["stock_code"] || row["代码"] || "");
         const stockName = String(row["股票名称"] || row["stock_name"] || row["名称"] || "");
         const username = String(row["作者"] || row["username"] || row["用户名"] || "匿名用户");
-        const title = String(row["标题"] || row["title"] || row["帖子标题"] || "");
+        const title = String(row["主评论"] || row["标题"] || row["title"] || row["帖子标题"] || "");
         const commentContent = String(row["评论内容"] || row["content"] || row["评论"] || title);
         const commentTime = String(row["最后更新"] || row["time"] || row["时间"] || row["更新时间"] || new Date().toISOString());
         const sourceUrl = String(row["链接"] || row["url"] || row["source_url"] || row["来源"] || "");
         const readCount = Number(row["阅读"] || row["read_count"] || row["阅读量"] || 0);
-        const replyCount = Number(row["评论"] || row["reply_count"] || row["回复"] || 0);
+        const replyCount = Number(row["评论数量"] || row["评论"] || row["reply_count"] || row["回复"] || 0);
 
         return {
           stock_code: stockCode,
@@ -289,6 +313,59 @@ export default function MonitorPage() {
     }
   };
 
+  // 图表数据处理
+  const processChartData = useCallback(() => {
+    // 按时间范围分组统计
+    const grouped: Record<string, { positive: number; neutral: number; negative: number }> = {};
+    
+    comments.forEach((comment) => {
+      const date = new Date(comment.comment_time);
+      let key: string;
+      
+      switch (timeRange) {
+        case "month":
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+          break;
+        case "quarter":
+          const quarter = Math.floor(date.getMonth() / 3) + 1;
+          key = `${date.getFullYear()}-Q${quarter}`;
+          break;
+        case "half":
+          const half = date.getMonth() < 6 ? "H1" : "H2";
+          key = `${date.getFullYear()}-${half}`;
+          break;
+        case "year":
+          key = `${date.getFullYear()}`;
+          break;
+        default: // day
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      }
+      
+      if (!grouped[key]) {
+        grouped[key] = { positive: 0, neutral: 0, negative: 0 };
+      }
+      
+      if (comment.sentiment === "positive") grouped[key].positive++;
+      else if (comment.sentiment === "neutral") grouped[key].neutral++;
+      else if (comment.sentiment === "negative") grouped[key].negative++;
+    });
+    
+    const chartData = Object.entries(grouped)
+      .map(([date, counts]) => ({
+        date,
+        好评: counts.positive,
+        一般: counts.neutral,
+        差评: counts.negative,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    
+    setChartData(chartData);
+  }, [comments, timeRange]);
+
+  useEffect(() => {
+    processChartData();
+  }, [processChartData]);
+
   const getSentimentBadge = (sentiment: string) => {
     switch (sentiment) {
       case "positive":
@@ -366,6 +443,45 @@ export default function MonitorPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* 可视化图表 */}
+        {chartData.length > 0 && (
+          <Card className="bg-white rounded-xl border-0 shadow-sm mb-6">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-medium">舆情趋势分析</CardTitle>
+                <Select value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="day">按天</SelectItem>
+                    <SelectItem value="month">按月</SelectItem>
+                    <SelectItem value="quarter">按季度</SelectItem>
+                    <SelectItem value="half">按半年</SelectItem>
+                    <SelectItem value="year">按年度</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Area type="monotone" dataKey="positive" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="好评" />
+                    <Area type="monotone" dataKey="neutral" stackId="1" stroke="#9ca3af" fill="#9ca3af" fillOpacity={0.6} name="一般" />
+                    <Area type="monotone" dataKey="negative" stackId="1" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} name="差评" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 操作栏 */}
         <Card className="bg-white rounded-xl border-0 shadow-sm mb-6">
@@ -468,8 +584,8 @@ export default function MonitorPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[80px]">阅读</TableHead>
-                    <TableHead className="w-[80px]">评论</TableHead>
-                    <TableHead>标题</TableHead>
+                    <TableHead className="w-[80px]">评论数量</TableHead>
+                    <TableHead>主评论</TableHead>
                     <TableHead className="w-[120px]">作者</TableHead>
                     <TableHead className="w-[160px]">最后更新</TableHead>
                   </TableRow>
@@ -495,7 +611,7 @@ export default function MonitorPage() {
                       </TableCell>
                       <TableCell className="text-sm font-medium">
                         <div className="flex items-center gap-2">
-                          {comment.title || comment.comment_content}
+                          {comment.comment_content || comment.title}
                           {getSentimentBadge(comment.sentiment)}
                         </div>
                       </TableCell>
@@ -580,16 +696,18 @@ export default function MonitorPage() {
                     <div className="mt-1">{getSentimentBadge(selectedComment.sentiment)}</div>
                   </div>
                 </div>
-                {selectedComment.title && (
+                {selectedComment.comment_content && (
                   <div>
-                    <Label className="text-sm text-gray-500">标题</Label>
+                    <Label className="text-sm text-gray-500">主评论</Label>
+                    <p className="mt-1 p-3 bg-gray-50 rounded-lg text-sm whitespace-pre-wrap">{selectedComment.comment_content}</p>
+                  </div>
+                )}
+                {selectedComment.title && selectedComment.title !== selectedComment.comment_content && (
+                  <div>
+                    <Label className="text-sm text-gray-500">原标题</Label>
                     <p className="mt-1 font-medium">{selectedComment.title}</p>
                   </div>
                 )}
-                <div>
-                  <Label className="text-sm text-gray-500">评论内容</Label>
-                  <p className="mt-1 p-3 bg-gray-50 rounded-lg text-sm">{selectedComment.comment_content}</p>
-                </div>
                 {selectedComment.source_url && (
                   <div>
                     <Label className="text-sm text-gray-500">评论链接</Label>
@@ -606,9 +724,41 @@ export default function MonitorPage() {
                 {selectedComment.ai_analysis && (
                   <div>
                     <Label className="text-sm text-gray-500">AI 分析</Label>
-                    <pre className="mt-1 p-3 bg-gray-50 rounded-lg text-sm whitespace-pre-wrap">
-                      {selectedComment.ai_analysis}
-                    </pre>
+                    <div className="mt-2 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                      {(() => {
+                        try {
+                          const analysis = JSON.parse(selectedComment.ai_analysis);
+                          return (
+                            <div className="space-y-3">
+                              <div className="flex items-start gap-2">
+                                <span className="text-sm font-medium text-gray-700">情感倾向：</span>
+                                {getSentimentBadge(analysis.sentiment)}
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-gray-700">分析理由：</span>
+                                <p className="mt-1 text-sm text-gray-600">{analysis.reason}</p>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-gray-700">关键词：</span>
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  {analysis.keywords?.map((kw: string, i: number) => (
+                                    <span key={i} className="px-2 py-0.5 bg-white rounded text-xs text-blue-600 border border-blue-200">
+                                      {kw}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-gray-700">投资建议：</span>
+                                <p className="mt-1 text-sm text-gray-600">{analysis.suggestion}</p>
+                              </div>
+                            </div>
+                          );
+                        } catch {
+                          return <pre className="text-sm whitespace-pre-wrap">{selectedComment.ai_analysis}</pre>;
+                        }
+                      })()}
+                    </div>
                   </div>
                 )}
               </div>

@@ -34,16 +34,16 @@ export async function POST(request: NextRequest) {
       }
 
       // AI 分析
-      const prompt = `请分析以下股吧评论的情感倾向，并给出详细分析：
+      const prompt = `请分析以下股吧主评论的情感倾向，并给出详细分析：
 
 股票：${comment.stock_name} (${comment.stock_code})
-评论内容：${comment.comment_content}
+主评论：${comment.comment_content}
 
 请从以下维度分析：
 1. 情感倾向（看好/看空/中性）
-2. 分析理由
-3. 关键词提取
-4. 投资建议参考
+2. 分析理由（2-3句话）
+3. 关键词提取（3-5个关键词）
+4. 投资建议参考（1句话）
 
 请以JSON格式返回：
 {
