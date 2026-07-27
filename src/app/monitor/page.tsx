@@ -281,6 +281,7 @@ export default function MonitorPage() {
       if (json.success) {
         alert(`成功上传 ${json.data.uploaded} 条评论`);
         setCurrentPage(1); // 重置到第一页
+        setDateFilter("all"); // 显示所有日期的评论
         fetchComments();
       } else {
         alert(json.error || "上传失败");
@@ -362,7 +363,7 @@ export default function MonitorPage() {
       const json = await res.json();
 
       if (json.success) {
-        alert(`成功分析 ${json.data.analyzed} 条评论`);
+        alert(`成功分析 ${json.data.length} 条评论`);
         fetchComments();
       } else {
         alert(json.error || "分析失败");
