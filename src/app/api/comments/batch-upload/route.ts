@@ -21,6 +21,42 @@ function parseCommentTime(timeStr: string | null | undefined): string {
   return new Date().toISOString();
 }
 
+// 检测文本中的敏感字
+async function checkSensitiveWords(text: string): Promise<{ has_sensitive_words: string; sensitive_words: string | null }> {
+  if (!text) return { has_sensitive_words: "false", sensitive_words: null };
+
+  try {
+    const supabase = getSupabaseClient();
+    const { data: sensitiveWords, error } = await supabase
+      .from("sensitive_words")
+      .select("word")
+      .eq("is_active", "true");
+
+    if (error || !sensitiveWords) {
+      return { has_sensitive_words: "false", sensitive_words: null };
+    }
+
+    const matchedWords: string[] = [];
+    for (const item of sensitiveWords) {
+      if (text.includes(item.word)) {
+        matchedWords.push(item.word);
+      }
+    }
+
+    if (matchedWords.length > 0) {
+      return {
+        has_sensitive_words: "true",
+        sensitive_words: JSON.stringify(matchedWords),
+      };
+    }
+
+    return { has_sensitive_words: "false", sensitive_words: null };
+  } catch (error) {
+    console.error("Sensitive word check failed:", error);
+    return { has_sensitive_words: "false", sensitive_words: null };
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -79,6 +115,9 @@ export async function POST(request: NextRequest) {
         sentiment_score = (score / 10).toFixed(2);
       }
 
+      // 检测敏感字
+      const sensitiveCheck = await checkSensitiveWords(content);
+
       const newComment = {
         stock_code: stock_code || "unknown",
         stock_name: stock_name || "未知股票",
@@ -92,6 +131,8 @@ export async function POST(request: NextRequest) {
         read_count: read_count || 0,
         reply_count: reply_count || 0,
         title: title || null,
+        has_sensitive_words: sensitiveCheck.has_sensitive_words,
+        sensitive_words: sensitiveCheck.sensitive_words,
       };
 
       console.log("准备插入数据:", newComment);

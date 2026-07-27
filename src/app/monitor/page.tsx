@@ -45,6 +45,7 @@ import {
   Clock,
   BarChart3,
   Calendar,
+  ShieldAlert,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
@@ -78,9 +79,11 @@ interface StockComment {
   sentiment: string;
   sentiment_score: string;
   ai_analysis: string | null;
-  read_count?: number;
-  reply_count?: number;
-  title?: string;
+  read_count: number;
+  reply_count: number;
+  title: string | null;
+  has_sensitive_words: string;
+  sensitive_words: string | null;
 }
 
 interface Stats {
@@ -795,8 +798,16 @@ export default function MonitorPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        <div className="max-w-[300px] truncate" title={comment.comment_content || comment.title}>
-                          {comment.comment_content || comment.title}
+                        <div className="flex items-center gap-2">
+                          <div className="max-w-[280px] truncate" title={comment.comment_content || comment.title || undefined}>
+                            {comment.comment_content || comment.title}
+                          </div>
+                          {comment.has_sensitive_words === "true" && (
+                            <Badge className="bg-red-100 text-red-700 border-red-200 text-xs" title={`敏感字：${comment.sensitive_words || ""}`}>
+                              <ShieldAlert className="h-3 w-3 mr-1" />
+                              敏感
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -925,6 +936,26 @@ export default function MonitorPage() {
                     <Label className="text-sm text-gray-500">情感分类</Label>
                     <div className="mt-1">{getSentimentBadge(selectedComment.sentiment)}</div>
                   </div>
+                  {selectedComment.has_sensitive_words === "true" && (
+                    <div>
+                      <Label className="text-sm text-gray-500">敏感字检测</Label>
+                      <div className="mt-1">
+                        <Badge className="bg-red-100 text-red-700 border-red-200">
+                          <ShieldAlert className="h-3 w-3 mr-1" />
+                          涉及敏感字
+                        </Badge>
+                        {selectedComment.sensitive_words && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {JSON.parse(selectedComment.sensitive_words).map((word: string, i: number) => (
+                              <span key={i} className="px-2 py-0.5 bg-red-50 rounded text-xs text-red-600 border border-red-200">
+                                {word}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {selectedComment.comment_content && (
                   <div>

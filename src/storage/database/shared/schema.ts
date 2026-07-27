@@ -84,6 +84,9 @@ export const stockComments = pgTable(
     read_count: integer("read_count").default(0), // 阅读数
     reply_count: integer("reply_count").default(0), // 评论数
     title: text("title"), // 标题
+    // 敏感字检测
+    has_sensitive_words: varchar("has_sensitive_words", { length: 10 }).default("false"), // 是否包含敏感字
+    sensitive_words: text("sensitive_words"), // 匹配的敏感字列表，JSON格式
     // 元数据
     collected_at: timestamp("collected_at", { withTimezone: true }).defaultNow().notNull(),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -94,6 +97,26 @@ export const stockComments = pgTable(
     index("stock_comments_sentiment_idx").on(table.sentiment),
     index("stock_comments_comment_time_idx").on(table.comment_time),
     index("stock_comments_collected_at_idx").on(table.collected_at),
+    index("stock_comments_has_sensitive_words_idx").on(table.has_sensitive_words),
+  ]
+);
+
+// 敏感字库表
+export const sensitiveWords = pgTable(
+  "sensitive_words",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    word: varchar("word", { length: 100 }).notNull(), // 敏感字
+    category: varchar("category", { length: 50 }).notNull().default("general"), // 分类：general, political, pornographic, violent等
+    level: varchar("level", { length: 20 }).notNull().default("medium"), // 级别：low, medium, high
+    is_active: varchar("is_active", { length: 10 }).notNull().default("true"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("sensitive_words_word_idx").on(table.word),
+    index("sensitive_words_category_idx").on(table.category),
+    index("sensitive_words_is_active_idx").on(table.is_active),
   ]
 );
 
