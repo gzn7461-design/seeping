@@ -115,6 +115,19 @@ export default function MonitorPage() {
   const fetchComments = useCallback(async () => {
     setLoading(true);
     try {
+      // 获取统计数据（不受分页影响）
+      const statsParams = new URLSearchParams();
+      if (selectedStock !== "all") statsParams.set("stock_code", selectedStock);
+      if (dateFilter !== "all") statsParams.set("date", dateFilter);
+      
+      const statsRes = await fetch(`/api/comments/stats?${statsParams.toString()}`);
+      const statsJson = await statsRes.json();
+      
+      if (statsJson.success) {
+        setStats(statsJson.data);
+      }
+      
+      // 获取分页数据
       const params = new URLSearchParams();
       if (sentimentFilter !== "all") params.set("sentiment", sentimentFilter);
       if (selectedStock !== "all") params.set("stock_code", selectedStock);
@@ -129,21 +142,13 @@ export default function MonitorPage() {
         setComments(json.data);
         setTotalPages(json.pagination?.totalPages || 0);
         setTotalCount(json.pagination?.total || 0);
-        // 计算统计
-        const allComments = json.data;
-        setStats({
-          total: allComments.length,
-          positive: allComments.filter((c: StockComment) => c.sentiment === "positive").length,
-          neutral: allComments.filter((c: StockComment) => c.sentiment === "neutral").length,
-          negative: allComments.filter((c: StockComment) => c.sentiment === "negative").length,
-        });
       }
     } catch (error) {
       console.error("Failed to fetch comments:", error);
     } finally {
       setLoading(false);
     }
-  }, [sentimentFilter]);
+  }, [sentimentFilter, selectedStock, dateFilter, currentPage]);
 
   useEffect(() => {
     fetchComments();
