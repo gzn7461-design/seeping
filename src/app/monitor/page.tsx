@@ -148,23 +148,42 @@ export default function MonitorPage() {
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(firstSheet) as Record<string, unknown>[];
 
+      console.log("Excel解析结果:", jsonData);
+      console.log("第一行数据:", jsonData[0]);
+      console.log("列名:", Object.keys(jsonData[0] || {}));
+
       if (jsonData.length === 0) {
         alert("Excel文件为空");
         return;
       }
 
-      // 批量上传评论
-      const uploadData = jsonData.map((row) => ({
-        stock_code: String(row["股票代码"] || row["stock_code"] || ""),
-        stock_name: String(row["股票名称"] || row["stock_name"] || ""),
-        username: String(row["作者"] || row["username"] || "匿名用户"),
-        comment_content: String(row["标题"] || row["title"] || row["评论内容"] || ""),
-        comment_time: String(row["最后更新"] || row["time"] || row["时间"] || new Date().toISOString()),
-        source_url: String(row["链接"] || row["url"] || row["source_url"] || ""),
-        read_count: Number(row["阅读"] || row["read_count"] || 0),
-        reply_count: Number(row["评论"] || row["reply_count"] || 0),
-        title: String(row["标题"] || row["title"] || ""),
-      }));
+      // 批量上传评论 - 支持多种列名映射
+      const uploadData = jsonData.map((row) => {
+        // 尝试多种可能的列名
+        const stockCode = String(row["股票代码"] || row["stock_code"] || row["代码"] || "");
+        const stockName = String(row["股票名称"] || row["stock_name"] || row["名称"] || "");
+        const username = String(row["作者"] || row["username"] || row["用户名"] || "匿名用户");
+        const title = String(row["标题"] || row["title"] || row["帖子标题"] || "");
+        const commentContent = String(row["评论内容"] || row["content"] || row["评论"] || title);
+        const commentTime = String(row["最后更新"] || row["time"] || row["时间"] || row["更新时间"] || new Date().toISOString());
+        const sourceUrl = String(row["链接"] || row["url"] || row["source_url"] || row["来源"] || "");
+        const readCount = Number(row["阅读"] || row["read_count"] || row["阅读量"] || 0);
+        const replyCount = Number(row["评论"] || row["reply_count"] || row["回复"] || 0);
+
+        return {
+          stock_code: stockCode,
+          stock_name: stockName,
+          username: username,
+          comment_content: commentContent,
+          comment_time: commentTime,
+          source_url: sourceUrl,
+          read_count: readCount,
+          reply_count: replyCount,
+          title: title,
+        };
+      });
+
+      console.log("上传数据:", uploadData);
 
       const res = await fetch("/api/comments/batch-upload", {
         method: "POST",
@@ -172,6 +191,8 @@ export default function MonitorPage() {
         body: JSON.stringify({ comments: uploadData }),
       });
       const json = await res.json();
+
+      console.log("上传响应:", json);
 
       if (json.success) {
         alert(`成功上传 ${json.data.uploaded} 条评论`);
