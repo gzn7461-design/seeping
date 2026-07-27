@@ -213,6 +213,15 @@ export default function MonitorPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // 检查是否选择了股票
+    if (!uploadStockCode) {
+      alert("请先选择股票后再上传Excel文件");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     setUploading(true);
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -723,12 +732,13 @@ export default function MonitorPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[80px]">阅读</TableHead>
-                    <TableHead className="w-[80px]">评论数量</TableHead>
-                    <TableHead>主评论（情感）</TableHead>
-                    <TableHead className="w-[120px]">作者</TableHead>
-                    <TableHead className="w-[100px]">股票</TableHead>
-                    <TableHead className="w-[160px]">最后更新</TableHead>
+                    <TableHead className="w-[70px]">阅读</TableHead>
+                    <TableHead className="w-[70px]">评论数</TableHead>
+                    <TableHead>主评论</TableHead>
+                    <TableHead className="w-[100px]">情感</TableHead>
+                    <TableHead className="w-[100px]">作者</TableHead>
+                    <TableHead className="w-[90px]">股票</TableHead>
+                    <TableHead className="w-[140px]">最后更新</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -750,34 +760,61 @@ export default function MonitorPage() {
                           {comment.reply_count || 0}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1">{comment.comment_content || comment.title}</div>
+                      <TableCell className="text-sm">
+                        <div className="max-w-[300px] truncate" title={comment.comment_content || comment.title}>
+                          {comment.comment_content || comment.title}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div onClick={(e) => e.stopPropagation()}>
                           <Select
                             value={comment.sentiment || "neutral"}
                             onValueChange={(value) => handleSentimentChange(comment.id, value)}
                           >
-                            <SelectTrigger className="h-6 w-16 text-xs">
-                              <SelectValue />
+                            <SelectTrigger className={`h-7 w-20 text-xs border-0 ${
+                              comment.sentiment === 'positive' ? 'bg-green-50 text-green-700 hover:bg-green-100' :
+                              comment.sentiment === 'negative' ? 'bg-red-50 text-red-700 hover:bg-red-100' :
+                              'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                            }`}>
+                              <div className="flex items-center gap-1">
+                                {comment.sentiment === 'positive' && <ThumbsUp className="h-3 w-3" />}
+                                {comment.sentiment === 'negative' && <ThumbsDown className="h-3 w-3" />}
+                                {(!comment.sentiment || comment.sentiment === 'neutral') && <Minus className="h-3 w-3" />}
+                                <span>{comment.sentiment === 'positive' ? '好评' : comment.sentiment === 'negative' ? '差评' : '一般'}</span>
+                              </div>
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="positive">好评</SelectItem>
-                              <SelectItem value="neutral">一般</SelectItem>
-                              <SelectItem value="negative">差评</SelectItem>
+                              <SelectItem value="positive">
+                                <div className="flex items-center gap-1">
+                                  <ThumbsUp className="h-3 w-3 text-green-600" />
+                                  <span className="text-green-700">好评</span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="neutral">
+                                <div className="flex items-center gap-1">
+                                  <Minus className="h-3 w-3 text-gray-600" />
+                                  <span className="text-gray-700">一般</span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="negative">
+                                <div className="flex items-center gap-1">
+                                  <ThumbsDown className="h-3 w-3 text-red-600" />
+                                  <span className="text-red-700">差评</span>
+                                </div>
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        <div className="flex items-center gap-1">
-                          <User className="h-3 w-3 text-gray-400" />
-                          {comment.username}
+                        <div className="flex items-center gap-1 truncate max-w-[80px]" title={comment.username}>
+                          <User className="h-3 w-3 text-gray-400 shrink-0" />
+                          <span className="truncate">{comment.username}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        <div className="text-xs">
+                        <div className="text-xs" title={`${comment.stock_code} ${comment.stock_name}`}>
                           <div className="font-medium">{comment.stock_code || "-"}</div>
-                          <div className="text-gray-500 truncate max-w-[80px]">{comment.stock_name || "-"}</div>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-gray-500">
@@ -890,19 +927,20 @@ export default function MonitorPage() {
                           return (
                             <div className="space-y-4">
                               {/* 分析对象 */}
-                              {analysis.target && (
-                                <div>
-                                  <span className="text-sm font-medium text-gray-700">📋 分析对象：</span>
-                                  <p className="mt-1 text-sm text-gray-600">{analysis.target}</p>
-                                </div>
-                              )}
+                              <div>
+                                <span className="text-sm font-medium text-gray-700">📋 分析对象：</span>
+                                <p className="mt-1 text-sm text-gray-600">{selectedComment.stock_name} ({selectedComment.stock_code}) - {selectedComment.comment_content || selectedComment.title}</p>
+                              </div>
                               {/* 情感判断 */}
                               <div className="flex items-start gap-2">
                                 <span className="text-sm font-medium text-gray-700">🎯 情感判断：</span>
                                 {getSentimentBadge(analysis.sentiment)}
+                                {analysis.sentiment_label && (
+                                  <span className="text-sm text-gray-500">({analysis.sentiment_label})</span>
+                                )}
                               </div>
                               {/* 评分 */}
-                              {analysis.score !== undefined && (
+                              {selectedComment.sentiment_score && (
                                 <div>
                                   <span className="text-sm font-medium text-gray-700">📊 情感评分：</span>
                                   <div className="mt-1 flex items-center gap-2">
@@ -912,10 +950,10 @@ export default function MonitorPage() {
                                           analysis.sentiment === 'positive' ? 'bg-green-500' : 
                                           analysis.sentiment === 'negative' ? 'bg-red-500' : 'bg-yellow-500'
                                         }`}
-                                        style={{ width: `${(analysis.score / 10) * 100}%` }}
+                                        style={{ width: `${Math.abs(parseFloat(selectedComment.sentiment_score) || 0) * 100}%` }}
                                       />
                                     </div>
-                                    <span className="text-sm font-medium">{analysis.score}/10</span>
+                                    <span className="text-sm font-medium">{selectedComment.sentiment_score}</span>
                                   </div>
                                 </div>
                               )}
@@ -924,13 +962,6 @@ export default function MonitorPage() {
                                 <div>
                                   <span className="text-sm font-medium text-gray-700">💭 判断依据：</span>
                                   <p className="mt-1 text-sm text-gray-600 leading-relaxed">{analysis.reason}</p>
-                                </div>
-                              )}
-                              {/* 关键信息 */}
-                              {analysis.key_info && (
-                                <div>
-                                  <span className="text-sm font-medium text-gray-700">🔑 关键信息：</span>
-                                  <p className="mt-1 text-sm text-gray-600">{analysis.key_info}</p>
                                 </div>
                               )}
                               {/* 关键词 */}
