@@ -13,6 +13,7 @@ import {
   Bell,
   Building2,
   ShieldAlert,
+  Activity,
 } from 'lucide-react';
 
 const navItems = [
@@ -22,6 +23,7 @@ const navItems = [
   { href: '/history', label: '发布历史', icon: History },
   { href: '/monitor', label: '舆情监控', icon: TrendingUp },
   { href: '/alerts', label: '预警管理', icon: Bell },
+  { href: '/alerts/center', label: '预警中心', icon: Activity },
   { href: '/stocks', label: '股票管理', icon: Building2 },
   { href: '/sensitive-words', label: '敏感字库', icon: ShieldAlert },
 ];

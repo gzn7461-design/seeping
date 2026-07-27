@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { Sidebar } from "@/components/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import {
   XCircle,
   RefreshCw,
   Send,
+  Activity,
 } from "lucide-react";
 
 interface AlertConfig {
@@ -171,6 +173,12 @@ export default function AlertsPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Link href="/alerts/center">
+              <Button variant="outline">
+                <Activity className="h-4 w-4 mr-2" />
+                预警中心
+              </Button>
+            </Link>
             <Button
               variant="outline"
               onClick={handleCheckAlerts}

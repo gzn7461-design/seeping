@@ -154,11 +154,60 @@ export async function POST(request: NextRequest) {
 
     console.log(`上传完成: 成功${uploadedComments.length}条, 失败${errors.length}条`);
 
+    // 对包含敏感字的评论发送预警通知
+    const sensitiveComments = uploadedComments.filter(
+      (c) => c.has_sensitive_words === "true" && c.sensitive_words
+    );
+
+    if (sensitiveComments.length > 0) {
+      console.log(`检测到${sensitiveComments.length}条包含敏感字的评论，发送预警通知`);
+
+      // 按股票分组发送预警
+      const groupedByStock = sensitiveComments.reduce((acc, comment) => {
+        const key = `${comment.stock_code}-${comment.stock_name}`;
+        if (!acc[key]) {
+          acc[key] = {
+            stock_code: comment.stock_code,
+            stock_name: comment.stock_name,
+            comments: [],
+          };
+        }
+        acc[key].comments.push(comment);
+        return acc;
+      }, {} as Record<string, { stock_code: string; stock_name: string; comments: any[] }>);
+
+      // 并行发送所有股票的预警
+      const stockGroups = Object.values(groupedByStock) as Array<{ stock_code: string; stock_name: string; comments: any[] }>;
+      await Promise.all(
+        stockGroups.map(async (stockGroup) => {
+          const { stock_code, stock_name, comments } = stockGroup;
+          for (const comment of comments) {
+            try {
+              const matchedWords = JSON.parse(comment.sensitive_words || "[]");
+              await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/alerts/sensitive-word`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  comment,
+                  matchedWords,
+                  stockCode: stock_code,
+                  stockName: stock_name,
+                }),
+              });
+            } catch (error) {
+              console.error(`发送预警失败 [${stock_code}]:`, error);
+            }
+          }
+        })
+      );
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         uploaded: uploadedComments.length,
         failed: errors.length,
+        sensitiveCount: sensitiveComments.length,
         errors: errors.length > 0 ? errors : undefined,
       },
     });
