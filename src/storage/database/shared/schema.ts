@@ -1,6 +1,19 @@
 import { pgTable, serial, varchar, text, timestamp, integer, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
+export const stockList = pgTable(
+  "stock_list",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    stock_code: varchar("stock_code", { length: 20 }).notNull(),
+    stock_name: varchar("stock_name", { length: 50 }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("stock_list_code_idx").on(table.stock_code),
+  ]
+);
+
 export const healthCheck = pgTable("health_check", {
   id: serial().notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),

@@ -11,6 +11,7 @@ import {
   MessageSquare,
   TrendingUp,
   Bell,
+  Building2,
 } from 'lucide-react';
 
 const navItems = [
@@ -20,6 +21,7 @@ const navItems = [
   { href: '/history', label: '发布历史', icon: History },
   { href: '/monitor', label: '舆情监控', icon: TrendingUp },
   { href: '/alerts', label: '预警管理', icon: Bell },
+  { href: '/stocks', label: '股票管理', icon: Building2 },
 ];
 
 export function Sidebar() {

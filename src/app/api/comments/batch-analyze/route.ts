@@ -55,7 +55,10 @@ export async function POST(request: NextRequest) {
 }`;
 
       const messages: Array<{ role: "user"; content: string }> = [{ role: "user", content: prompt }];
-      const response = await client.invoke(messages, { temperature: 0.7 });
+      const response = await client.invoke(messages, { 
+        temperature: 0.7,
+        model: "doubao-seed-2-0-pro-260215" // 使用更智能的模型
+      });
 
       // 解析AI响应
       let aiResult = {

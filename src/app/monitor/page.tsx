@@ -313,6 +313,31 @@ export default function MonitorPage() {
     }
   };
 
+  const handleSentimentChange = async (commentId: string, newSentiment: string) => {
+    try {
+      const res = await fetch(`/api/comments/${commentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sentiment: newSentiment }),
+      });
+      const json = await res.json();
+      
+      if (json.success) {
+        // 更新本地状态
+        setComments(prev =>
+          prev.map(c => c.id === commentId ? { ...c, sentiment: newSentiment } : c)
+        );
+        // 刷新评论列表
+        await fetchComments();
+      } else {
+        alert(json.error || "更新失败");
+      }
+    } catch (error) {
+      console.error("更新情感标签失败:", error);
+      alert("更新失败，请重试");
+    }
+  };
+
   // 图表数据处理
   const processChartData = useCallback(() => {
     // 按时间范围分组统计
@@ -610,9 +635,23 @@ export default function MonitorPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          {comment.comment_content || comment.title}
-                          {getSentimentBadge(comment.sentiment)}
+                        <div>
+                          <div>{comment.comment_content || comment.title}</div>
+                          <div className="mt-1">
+                            <Select
+                              value={comment.sentiment || "neutral"}
+                              onValueChange={(value) => handleSentimentChange(comment.id, value)}
+                            >
+                              <SelectTrigger className="h-6 w-20 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="positive">好评</SelectItem>
+                                <SelectItem value="neutral">一般</SelectItem>
+                                <SelectItem value="negative">差评</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
