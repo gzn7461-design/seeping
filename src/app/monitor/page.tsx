@@ -378,9 +378,9 @@ export default function MonitorPage() {
     const chartData = Object.entries(grouped)
       .map(([date, counts]) => ({
         date,
-        好评: counts.positive,
-        一般: counts.neutral,
-        差评: counts.negative,
+        positive: counts.positive,
+        neutral: counts.neutral,
+        negative: counts.negative,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
     
