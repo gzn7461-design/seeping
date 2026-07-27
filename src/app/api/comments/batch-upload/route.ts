@@ -1,6 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
 
+// 时间格式转换：将 "07-27 14:38" 转换为 "2025-07-27 14:38:00"
+function parseCommentTime(timeStr: string | null | undefined): string {
+  if (!timeStr) return new Date().toISOString();
+  
+  // 已经是完整格式
+  if (timeStr.includes("T") || timeStr.includes(" ")) {
+    // 检查是否是 "2025-07-27 14:38:00" 格式
+    if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(timeStr)) {
+      return timeStr;
+    }
+    // 检查是否是 "07-27 14:38" 格式
+    if (/^\d{2}-\d{2}\s+\d{2}:\d{2}/.test(timeStr)) {
+      const year = new Date().getFullYear();
+      return `${year}-${timeStr}`;
+    }
+  }
+  
+  return new Date().toISOString();
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -64,7 +84,7 @@ export async function POST(request: NextRequest) {
         stock_name: stock_name || "未知股票",
         username: username || "匿名用户",
         comment_content: content,
-        comment_time: comment_time || new Date().toISOString(),
+        comment_time: parseCommentTime(comment_time),
         source_url: source_url || null,
         sentiment,
         sentiment_score,
