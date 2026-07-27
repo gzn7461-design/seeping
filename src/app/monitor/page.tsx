@@ -78,6 +78,10 @@ export default function MonitorPage() {
   const [selectedComment, setSelectedComment] = useState<StockComment | null>(null);
   const [uploading, setUploading] = useState(false);
   const [analyzingAll, setAnalyzingAll] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 50;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchComments = useCallback(async () => {
@@ -85,12 +89,16 @@ export default function MonitorPage() {
     try {
       const params = new URLSearchParams();
       if (sentimentFilter !== "all") params.set("sentiment", sentimentFilter);
+      params.set("page", currentPage.toString());
+      params.set("pageSize", pageSize.toString());
       
       const res = await fetch(`/api/comments?${params.toString()}`);
       const json = await res.json();
       
       if (json.success) {
         setComments(json.data);
+        setTotalPages(json.pagination?.totalPages || 0);
+        setTotalCount(json.pagination?.total || 0);
         // 计算统计
         const allComments = json.data;
         setStats({
@@ -109,7 +117,7 @@ export default function MonitorPage() {
 
   useEffect(() => {
     fetchComments();
-  }, [fetchComments]);
+  }, [fetchComments, currentPage]);
 
   // 下载Excel模板
   const handleDownloadTemplate = () => {
@@ -196,6 +204,7 @@ export default function MonitorPage() {
 
       if (json.success) {
         alert(`成功上传 ${json.data.uploaded} 条评论`);
+        setCurrentPage(1); // 重置到第一页
         fetchComments();
       } else {
         alert(json.error || "上传失败");
@@ -506,6 +515,33 @@ export default function MonitorPage() {
                   ))}
                 </TableBody>
               </Table>
+            )}
+            
+            {/* 分页 */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-2 py-4">
+                <div className="text-sm text-gray-500">
+                  共 {totalCount} 条评论，第 {currentPage} / {totalPages} 页
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    上一页
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    下一页
+                  </Button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
