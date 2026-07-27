@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Upload,
+  Download,
   RefreshCw,
   ThumbsUp,
   ThumbsDown,
@@ -109,6 +110,39 @@ export default function MonitorPage() {
   useEffect(() => {
     fetchComments();
   }, [fetchComments]);
+
+  // 下载Excel模板
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        "股票代码": "600519",
+        "股票名称": "贵州茅台",
+        "标题": "茅台今天走势分析",
+        "作者": "股市老手",
+        "评论内容": "今天放量突破，后市看好！",
+        "阅读": 1234,
+        "评论": 56,
+        "最后更新": "2025-07-02 15:30:00",
+        "链接": "https://guba.eastmoney.com/600519,123456.html",
+      },
+      {
+        "股票代码": "000858",
+        "股票名称": "五粮液",
+        "标题": "五粮液基本面分析",
+        "作者": "价值投资者",
+        "评论内容": "基本面很好，长期持有",
+        "阅读": 890,
+        "评论": 23,
+        "最后更新": "2025-07-02 14:20:00",
+        "链接": "https://guba.eastmoney.com/000858,789012.html",
+      },
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "评论数据");
+    XLSX.writeFile(wb, "评论数据模板.xlsx");
+  };
 
   // 处理Excel上传
   const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -339,6 +373,15 @@ export default function MonitorPage() {
                     上传Excel
                   </>
                 )}
+              </Button>
+
+              {/* 下载模板 */}
+              <Button
+                onClick={handleDownloadTemplate}
+                variant="outline"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                下载模板
               </Button>
 
               {/* 一键分析 */}
