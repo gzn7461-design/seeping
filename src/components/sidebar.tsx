@@ -18,12 +18,8 @@ import {
 
 const navItems = [
   { href: '/', label: '仪表盘', icon: LayoutDashboard },
-  { href: '/templates', label: '评论模板', icon: FileText },
-  { href: '/tasks', label: '定时发布', icon: CalendarClock },
-  { href: '/history', label: '发布历史', icon: History },
-  { href: '/monitor', label: '舆情监控', icon: TrendingUp },
-  { href: '/alerts', label: '预警管理', icon: Bell },
   { href: '/alerts/center', label: '预警中心', icon: Activity },
+  { href: '/templates', label: '评论管理', icon: MessageSquare },
   { href: '/stocks', label: '股票管理', icon: Building2 },
   { href: '/sensitive-words', label: '敏感字库', icon: ShieldAlert },
 ];

@@ -5,7 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity, Plus, Upload, BarChart3, Calendar } from "lucide-react";
 import Link from "next/link";
 
 interface AlertRecord {
@@ -42,20 +47,66 @@ interface SensitiveWordAlert {
   created_at: string;
 }
 
+interface Stock {
+  id: string;
+  stock_code: string;
+  stock_name: string;
+  created_at: string;
+}
+
+interface Comment {
+  id: string;
+  stock_code: string;
+  stock_name: string;
+  title: string;
+  username: string;
+  comment_content: string;
+  comment_time: string;
+  source_url: string;
+  read_count: number;
+  reply_count: number;
+  sentiment: string;
+  sentiment_score: number;
+  ai_analysis: any;
+  has_sensitive_words: string;
+  sensitive_words: string;
+  collected_at: string;
+  created_at: string;
+}
+
 export default function AlertsCenterPage() {
   const [alertRecords, setAlertRecords] = useState<AlertRecord[]>([]);
   const [alertConfigs, setAlertConfigs] = useState<AlertConfig[]>([]);
   const [sensitiveAlerts, setSensitiveAlerts] = useState<SensitiveWordAlert[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalAlerts: 0,
     todayAlerts: 0,
     activeConfigs: 0,
     sensitiveWordAlerts: 0,
+    totalComments: 0,
+    negativeComments: 0,
   });
+
+  // 预警配置表单
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [configForm, setConfigForm] = useState({
+    stock_code: "",
+    stock_name: "",
+    negative_threshold: "30",
+    wecom_webhook: "",
+  });
+
+  // 评论上传
+  const [uploadStockCode, setUploadStockCode] = useState("");
+  const [uploadStockName, setUploadStockName] = useState("");
 
   useEffect(() => {
     fetchAlertData();
+    fetchStocks();
+    fetchComments();
   }, []);
 
   const fetchAlertData = async () => {
@@ -98,11 +149,83 @@ export default function AlertsCenterPage() {
         todayAlerts,
         activeConfigs,
         sensitiveWordAlerts: (sensitiveData.data || []).length,
+        totalComments: 0,
+        negativeComments: 0,
       });
     } catch (error) {
       console.error("获取预警数据失败:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStocks = async () => {
+    try {
+      const res = await fetch("/api/stocks");
+      const data = await res.json();
+      if (data.success) {
+        setStocks(data.data || []);
+      }
+    } catch (error) {
+      console.error("获取股票列表失败:", error);
+    }
+  };
+
+  const fetchComments = async () => {
+    try {
+      const res = await fetch("/api/comments?limit=100");
+      const data = await res.json();
+      if (data.success) {
+        setComments(data.data || []);
+        const negativeCount = (data.data || []).filter((c: Comment) => c.sentiment === "negative").length;
+        setStats(prev => ({
+          ...prev,
+          totalComments: (data.data || []).length,
+          negativeComments: negativeCount,
+        }));
+      }
+    } catch (error) {
+      console.error("获取评论失败:", error);
+    }
+  };
+
+  const handleSaveConfig = async () => {
+    try {
+      const res = await fetch("/api/alerts/configs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(configForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("预警配置保存成功");
+        setShowConfigDialog(false);
+        fetchAlertData();
+      } else {
+        alert(data.error || "保存失败");
+      }
+    } catch (error) {
+      console.error("保存预警配置失败:", error);
+      alert("保存失败");
+    }
+  };
+
+  const handleStockSelect = (stockCode: string) => {
+    const stock = stocks.find(s => s.stock_code === stockCode);
+    if (stock) {
+      setConfigForm({
+        ...configForm,
+        stock_code: stock.stock_code,
+        stock_name: stock.stock_name,
+      });
+    }
+  };
+
+  const handleUploadStockSelect = (stockCode: string) => {
+    const stock = stocks.find(s => s.stock_code === stockCode);
+    if (stock) {
+      setUploadStockCode(stock.stock_code);
+      setUploadStockName(stock.stock_name);
     }
   };
 
@@ -117,8 +240,73 @@ export default function AlertsCenterPage() {
     }
   };
 
+  const getSentimentBadge = (sentiment: string) => {
+    switch (sentiment) {
+      case "positive":
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">好评</Badge>;
+      case "neutral":
+        return <Badge variant="secondary">一般</Badge>;
+      case "negative":
+        return <Badge variant="destructive">差评</Badge>;
+      default:
+        return <Badge variant="outline">未分析</Badge>;
+    }
+  };
+
   const formatTime = (time: string) => {
     return new Date(time).toLocaleString("zh-CN");
+  };
+
+  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!uploadStockCode) {
+      alert("请先选择股票");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("stock_code", uploadStockCode);
+    formData.append("stock_name", uploadStockName);
+
+    try {
+      const res = await fetch("/api/comments/batch-upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`成功上传 ${data.data.success} 条评论`);
+        fetchComments();
+        fetchAlertData();
+      } else {
+        alert(data.error || "上传失败");
+      }
+    } catch (error) {
+      console.error("上传失败:", error);
+      alert("上传失败");
+    }
+  };
+
+  const handleAnalyzeAll = async () => {
+    try {
+      const res = await fetch("/api/comments/batch-analyze", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`成功分析 ${data.data.length} 条评论`);
+        fetchComments();
+        fetchAlertData();
+      } else {
+        alert(data.error || "分析失败");
+      }
+    } catch (error) {
+      console.error("分析失败:", error);
+      alert("分析失败");
+    }
   };
 
   return (
@@ -126,15 +314,17 @@ export default function AlertsCenterPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">预警中心</h1>
-          <p className="text-gray-500 mt-1">统一管理舆情预警、敏感字监控和定时发布</p>
+          <p className="text-gray-500 mt-1">统一管理舆情监控、预警配置和评论发布</p>
         </div>
-        <Button onClick={fetchAlertData} variant="outline">
-          刷新数据
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={fetchAlertData} variant="outline">
+            刷新数据
+          </Button>
+        </div>
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">总预警数</CardTitle>
@@ -178,6 +368,28 @@ export default function AlertsCenterPage() {
             <p className="text-xs text-muted-foreground">敏感字触发次数</p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">评论总数</CardTitle>
+            <MessageSquare className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalComments}</div>
+            <p className="text-xs text-muted-foreground">已导入评论</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">差评数量</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.negativeComments}</div>
+            <p className="text-xs text-muted-foreground">负面评论</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 功能导航 */}
@@ -188,26 +400,6 @@ export default function AlertsCenterPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link href="/monitor">
-              <Card className="hover:bg-gray-50 cursor-pointer transition-colors">
-                <CardContent className="pt-6">
-                  <TrendingUp className="h-8 w-8 text-blue-500 mb-2" />
-                  <div className="font-medium">舆情监控</div>
-                  <div className="text-sm text-gray-500">评论分析与统计</div>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link href="/alerts">
-              <Card className="hover:bg-gray-50 cursor-pointer transition-colors">
-                <CardContent className="pt-6">
-                  <Bell className="h-8 w-8 text-orange-500 mb-2" />
-                  <div className="font-medium">预警管理</div>
-                  <div className="text-sm text-gray-500">配置预警规则</div>
-                </CardContent>
-              </Card>
-            </Link>
-
             <Link href="/sensitive-words">
               <Card className="hover:bg-gray-50 cursor-pointer transition-colors">
                 <CardContent className="pt-6">
@@ -227,92 +419,219 @@ export default function AlertsCenterPage() {
                 </CardContent>
               </Card>
             </Link>
+
+            <Link href="/templates">
+              <Card className="hover:bg-gray-50 cursor-pointer transition-colors">
+                <CardContent className="pt-6">
+                  <MessageSquare className="h-8 w-8 text-blue-500 mb-2" />
+                  <div className="font-medium">评论管理</div>
+                  <div className="text-sm text-gray-500">模板与发布</div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/dashboard">
+              <Card className="hover:bg-gray-50 cursor-pointer transition-colors">
+                <CardContent className="pt-6">
+                  <BarChart3 className="h-8 w-8 text-purple-500 mb-2" />
+                  <div className="font-medium">数据仪表盘</div>
+                  <div className="text-sm text-gray-500">数据统计分析</div>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </CardContent>
       </Card>
 
-      {/* 预警记录 */}
-      <Tabs defaultValue="all">
+      <Tabs defaultValue="monitor">
         <TabsList>
-          <TabsTrigger value="all">全部预警</TabsTrigger>
-          <TabsTrigger value="sensitive">敏感字预警</TabsTrigger>
-          <TabsTrigger value="negative">差评预警</TabsTrigger>
+          <TabsTrigger value="monitor">舆情监控</TabsTrigger>
+          <TabsTrigger value="alerts">预警配置</TabsTrigger>
+          <TabsTrigger value="records">预警记录</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="space-y-4">
+        {/* 舆情监控 */}
+        <TabsContent value="monitor" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>预警记录</CardTitle>
-              <CardDescription>所有预警触发记录</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-8">加载中...</div>
-              ) : alertRecords.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">暂无预警记录</div>
-              ) : (
-                <div className="space-y-4">
-                  {alertRecords.slice(0, 20).map((record) => (
-                    <div key={record.id} className="border rounded-lg p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {getAlertTypeBadge(record.alert_type)}
-                          <span className="font-medium">
-                            {record.stock_name} ({record.stock_code})
-                          </span>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {formatTime(record.sent_at)}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-600 whitespace-pre-wrap">
-                        {record.message}
-                      </div>
-                    </div>
-                  ))}
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>评论数据</CardTitle>
+                  <CardDescription>上传 Excel 文件导入评论数据</CardDescription>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="sensitive" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>敏感字预警</CardTitle>
-              <CardDescription>检测到敏感字的评论预警</CardDescription>
+                <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
+                    <Select value={uploadStockCode} onValueChange={handleUploadStockSelect}>
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="选择股票" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stocks.map((stock) => (
+                          <SelectItem key={stock.id} value={stock.stock_code}>
+                            {stock.stock_name} ({stock.stock_code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleAnalyzeAll} variant="outline">
+                    一键分析
+                  </Button>
+                  <Button asChild>
+                    <label className="cursor-pointer">
+                      <Upload className="h-4 w-4 mr-2" />
+                      上传 Excel
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        className="hidden"
+                        onChange={handleExcelUpload}
+                      />
+                    </label>
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="text-center py-8">加载中...</div>
-              ) : sensitiveAlerts.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">暂无敏感字预警</div>
+              ) : comments.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">暂无评论数据</div>
               ) : (
                 <div className="space-y-4">
-                  {sensitiveAlerts.slice(0, 20).map((alert) => (
-                    <div key={alert.id} className="border border-red-200 rounded-lg p-4 space-y-2">
+                  {comments.slice(0, 20).map((comment) => (
+                    <div key={comment.id} className="border rounded-lg p-4 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Badge variant="destructive">敏感字</Badge>
+                          {getSentimentBadge(comment.sentiment)}
+                          {comment.has_sensitive_words === "true" && (
+                            <Badge variant="destructive">敏感</Badge>
+                          )}
                           <span className="font-medium">
-                            {alert.stock_name} ({alert.stock_code})
+                            {comment.stock_name} ({comment.stock_code})
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {comment.username}
                           </span>
                         </div>
                         <span className="text-sm text-gray-500">
-                          {formatTime(alert.created_at)}
+                          {formatTime(comment.comment_time)}
                         </span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-gray-500">作者：</span>
-                        {alert.username}
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-gray-500">敏感字：</span>
-                        <Badge variant="secondary">{alert.sensitive_words}</Badge>
                       </div>
                       <div className="text-sm text-gray-600">
-                        <span className="text-gray-500">内容：</span>
-                        {alert.comment_content}
+                        {comment.comment_content}
+                      </div>
+                      {comment.sensitive_words && (
+                        <div className="text-xs text-red-600">
+                          敏感字：{comment.sensitive_words}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* 预警配置 */}
+        <TabsContent value="alerts" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>预警配置</CardTitle>
+                  <CardDescription>配置差评阈值，超过阈值自动通过企业微信机器人推送预警</CardDescription>
+                </div>
+                <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      添加配置
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                      <DialogTitle>添加预警配置</DialogTitle>
+                      <DialogDescription>
+                        配置差评阈值，超过阈值自动推送企业微信机器人通知
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>股票</Label>
+                        <Select value={configForm.stock_code} onValueChange={handleStockSelect}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="选择股票" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {stocks.map((stock) => (
+                              <SelectItem key={stock.id} value={stock.stock_code}>
+                                {stock.stock_name} ({stock.stock_code})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>差评阈值 (%)</Label>
+                        <Input
+                          type="number"
+                          value={configForm.negative_threshold}
+                          onChange={(e) => setConfigForm({ ...configForm, negative_threshold: e.target.value })}
+                          placeholder="如 30"
+                        />
+                        <p className="text-sm text-gray-500">
+                          当差评占比超过此百分比时触发预警
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>企业微信机器人 Webhook</Label>
+                        <Input
+                          value={configForm.wecom_webhook}
+                          onChange={(e) => setConfigForm({ ...configForm, wecom_webhook: e.target.value })}
+                          placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"
+                        />
+                        <p className="text-sm text-gray-500">
+                          在企业微信群中添加机器人后获取 Webhook 地址
+                        </p>
+                      </div>
+
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setShowConfigDialog(false)}>
+                          取消
+                        </Button>
+                        <Button onClick={handleSaveConfig}>保存</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {alertConfigs.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">暂无预警配置</div>
+              ) : (
+                <div className="space-y-4">
+                  {alertConfigs.map((config) => (
+                    <div key={config.id} className="border rounded-lg p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={config.is_active === "true" ? "default" : "secondary"}>
+                            {config.is_active === "true" ? "启用" : "禁用"}
+                          </Badge>
+                          <span className="font-medium">
+                            {config.stock_name} ({config.stock_code})
+                          </span>
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          阈值：{config.negative_threshold}%
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Webhook：{config.wecom_webhook.substring(0, 50)}...
                       </div>
                     </div>
                   ))}
@@ -322,22 +641,116 @@ export default function AlertsCenterPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="negative" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>差评预警</CardTitle>
-              <CardDescription>差评比例超过阈值的预警</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-8">加载中...</div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  差评预警记录将显示在这里
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* 预警记录 */}
+        <TabsContent value="records" className="space-y-4">
+          <Tabs defaultValue="all">
+            <TabsList>
+              <TabsTrigger value="all">全部预警</TabsTrigger>
+              <TabsTrigger value="sensitive">敏感字预警</TabsTrigger>
+              <TabsTrigger value="negative">差评预警</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>预警记录</CardTitle>
+                  <CardDescription>所有预警触发记录</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="text-center py-8">加载中...</div>
+                  ) : alertRecords.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">暂无预警记录</div>
+                  ) : (
+                    <div className="space-y-4">
+                      {alertRecords.slice(0, 20).map((record) => (
+                        <div key={record.id} className="border rounded-lg p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {getAlertTypeBadge(record.alert_type)}
+                              <span className="font-medium">
+                                {record.stock_name} ({record.stock_code})
+                              </span>
+                            </div>
+                            <span className="text-sm text-gray-500">
+                              {formatTime(record.sent_at)}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-600 whitespace-pre-wrap">
+                            {record.message}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="sensitive" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>敏感字预警</CardTitle>
+                  <CardDescription>检测到敏感字的评论预警</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="text-center py-8">加载中...</div>
+                  ) : sensitiveAlerts.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">暂无敏感字预警</div>
+                  ) : (
+                    <div className="space-y-4">
+                      {sensitiveAlerts.slice(0, 20).map((alert) => (
+                        <div key={alert.id} className="border border-red-200 rounded-lg p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="destructive">敏感字</Badge>
+                              <span className="font-medium">
+                                {alert.stock_name} ({alert.stock_code})
+                              </span>
+                            </div>
+                            <span className="text-sm text-gray-500">
+                              {formatTime(alert.created_at)}
+                            </span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-gray-500">作者：</span>
+                            {alert.username}
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-gray-500">敏感字：</span>
+                            <Badge variant="secondary">{alert.sensitive_words}</Badge>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            <span className="text-gray-500">内容：</span>
+                            {alert.comment_content}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="negative" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>差评预警</CardTitle>
+                  <CardDescription>差评比例超过阈值的预警</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="text-center py-8">加载中...</div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      差评预警记录将显示在这里
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>
