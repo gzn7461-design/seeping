@@ -293,6 +293,40 @@ export default function MonitorPage() {
     }
   };
 
+  // 单条AI分析
+  const handleAnalyzeSingle = async (commentId: string) => {
+    setAnalyzingId(commentId);
+    try {
+      const res = await fetch("/api/comments/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comment_id: commentId }),
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        // 更新当前评论
+        if (selectedComment?.id === commentId) {
+          setSelectedComment({
+            ...selectedComment,
+            sentiment: json.data.sentiment,
+            sentiment_score: json.data.sentiment_score,
+            ai_analysis: json.data.ai_analysis,
+          });
+        }
+        // 刷新评论列表
+        fetchComments();
+      } else {
+        alert(json.error || "分析失败");
+      }
+    } catch (error) {
+      console.error("Failed to analyze comment:", error);
+      alert("分析失败，请稍后重试");
+    } finally {
+      setAnalyzingId(null);
+    }
+  };
+
   // 一键分析当天舆论
   const handleAnalyzeAll = async () => {
     if (comments.length === 0) {
@@ -917,7 +951,7 @@ export default function MonitorPage() {
                     </a>
                   </div>
                 )}
-                {selectedComment.ai_analysis && (
+                {selectedComment.ai_analysis ? (
                   <div>
                     <Label className="text-sm text-gray-500">AI 分析过程</Label>
                     <div className="mt-2 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
@@ -960,7 +994,7 @@ export default function MonitorPage() {
                               {/* 判断依据 */}
                               {analysis.reason && (
                                 <div>
-                                  <span className="text-sm font-medium text-gray-700">💭 判断依据：</span>
+                                  <span className="text-sm font-medium text-gray-700"> 判断依据：</span>
                                   <p className="mt-1 text-sm text-gray-600 leading-relaxed">{analysis.reason}</p>
                                 </div>
                               )}
@@ -990,6 +1024,30 @@ export default function MonitorPage() {
                           return <pre className="text-sm whitespace-pre-wrap">{selectedComment.ai_analysis}</pre>;
                         }
                       })()}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <Label className="text-sm text-gray-500">AI 分析</Label>
+                    <div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                      <p className="text-sm text-gray-500 mb-3">该评论尚未进行AI分析</p>
+                      <Button
+                        onClick={() => handleAnalyzeSingle(selectedComment.id)}
+                        disabled={analyzingId === selectedComment.id}
+                        size="sm"
+                      >
+                        {analyzingId === selectedComment.id ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            分析中...
+                          </>
+                        ) : (
+                          <>
+                            <Brain className="h-4 w-4 mr-2" />
+                            开始AI分析
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
                 )}
