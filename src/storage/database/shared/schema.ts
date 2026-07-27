@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, integer, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const healthCheck = pgTable("health_check", {
@@ -67,6 +67,10 @@ export const stockComments = pgTable(
     sentiment: varchar("sentiment", { length: 20 }).notNull().default("neutral"), // positive, neutral, negative
     sentiment_score: varchar("sentiment_score", { length: 10 }), // -1.0 到 1.0
     ai_analysis: text("ai_analysis"), // AI 分析详情
+    // 扩展字段
+    read_count: integer("read_count").default(0), // 阅读数
+    reply_count: integer("reply_count").default(0), // 评论数
+    title: text("title"), // 标题
     // 元数据
     collected_at: timestamp("collected_at", { withTimezone: true }).defaultNow().notNull(),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
