@@ -92,21 +92,47 @@ export async function POST(request: NextRequest) {
 
       // 检查是否超过阈值
       if (negativePercentage >= threshold || force_check) {
+        // 获取所有差评评论详情
+        const { data: negativeCommentDetails } = await supabase
+          .from('stock_comments')
+          .select('title, username, comment_content, comment_time, source_url, sentiment_score')
+          .eq('stock_code', config.stock_code)
+          .eq('sentiment', 'negative')
+          .gte('collected_at', yesterday.toISOString())
+          .order('collected_at', { ascending: false })
+          .limit(20);
+
         const message = `## 🚨 舆情预警
 
-**股票：** ${config.stock_name} (${config.stock_code})
-
-**📊 差评占比：** ${negativePercentage.toFixed(1)}% (${negativeComments}/${totalComments})
-
-**⚠️ 预警阈值：** ${threshold}%
-
-**📅 统计时间：** 最近24小时
+ ${new Date().toLocaleString("zh-CN")} | ⏰ 最近24小时
 
 ---
 
- **预警时间：** ${new Date().toLocaleString("zh-CN")}
+📊 **预警概览**
 
-请及时关注舆情动态！`;
+ 股票：${config.stock_name} (${config.stock_code})
+
+🔴 差评占比：${negativePercentage.toFixed(1)}% (${negativeComments}/${totalComments})
+
+⚠️ 预警阈值：${threshold}%
+
+---
+
+📋 **差评详情** (${negativeCommentDetails?.length || 0}条)
+
+${negativeCommentDetails?.map((c, i) => `**${i + 1}. ${c.title || '无标题'}**
+
+👤 作者：${c.username}
+
+💬 评论：${c.comment_content}
+
+🕐 时间：${c.comment_time}
+
+${c.source_url ? `🔗 链接：${c.source_url}` : ''}`).join('\n\n---\n\n') || '暂无差评详情'}
+
+---
+
+ CommentHub × ${config.stock_name} 自动预警`;
 
         // 发送企业微信消息
         try {

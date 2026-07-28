@@ -52,18 +52,32 @@ export async function POST(request: NextRequest) {
           const message = {
             msgtype: "markdown",
             markdown: {
-              content: `## ⚠️ 差评预警
+              content: `##  CommentHub 未处理差评巡检报告
 
-**股票：** ${config.stock_name} (${config.stock_code})
-
-**📊 未处理差评数：** ${negativeComments.length} 条
-
-**📝 最新评论：**
-${negativeComments.slice(0, 3).map((c: any) => `- ${c.comment_content?.substring(0, 50)}...`).join("\n")}
+📅 ${new Date().toLocaleString("zh-CN")} | ⏰ 自动检查
 
 ---
 
-⏰ 请及时处理！`,
+### 🟢 股票信息
+
+📌 **${config.stock_name}** (${config.stock_code})
+
+---
+
+###  预警概览
+
+🔴 **未处理差评数：** ${negativeComments.length} 条
+
+---
+
+### 📝 评论详情
+
+${negativeComments.map((c: any, idx: number) => `${idx + 1}. **${c.username || "匿名"}** (${c.comment_time || ""})
+   ${c.comment_content || ""}`).join("\n\n")}
+
+---
+
+⚡ CommentHub × 未处理差评自动巡检`,
             },
           };
 
@@ -89,18 +103,33 @@ ${negativeComments.slice(0, 3).map((c: any) => `- ${c.comment_content?.substring
           const message = {
             msgtype: "markdown",
             markdown: {
-              content: `##  敏感词预警
+              content: `##  CommentHub 敏感词预警巡检报告
 
-**股票：** ${config.stock_name} (${config.stock_code})
-
-**📊 未处理敏感词评论数：** ${sensitiveComments.length} 条
-
-**📝 最新评论：**
-${sensitiveComments.slice(0, 3).map((c: any) => `- ${c.comment_content?.substring(0, 50)}... [敏感词: ${c.sensitive_words || ""}]`).join("\n")}
+📅 ${new Date().toLocaleString("zh-CN")} |  自动检查
 
 ---
 
-⏰ 请及时处理！`,
+### 🟢 股票信息
+
+📌 **${config.stock_name}** (${config.stock_code})
+
+---
+
+###  预警概览
+
+🔴 **未处理敏感词评论数：** ${sensitiveComments.length} 条
+
+---
+
+### 📝 评论详情
+
+${sensitiveComments.map((c: any, idx: number) => `${idx + 1}. **${c.username || "匿名"}** (${c.comment_time || ""})
+   ${c.comment_content || ""}
+   🔴 **敏感词：** ${c.sensitive_words || ""}`).join("\n\n")}
+
+---
+
+ CommentHub × 敏感词自动巡检`,
             },
           };
 

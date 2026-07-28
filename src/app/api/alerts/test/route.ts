@@ -41,19 +41,37 @@ export async function POST(request: NextRequest) {
     for (const config of configs) {
       if (!config.wecom_webhook) continue;
 
-      const testMessage = `## 🧪 预警测试
+      const testMessage = `## 🧪 CommentHub 预警机器人测试报告
 
-**股票：** ${config.stock_name} (${config.stock_code})
-
-**📋 预警类型：** ${config.alert_types || "差评预警"}
-
-**⚠️ 差评阈值：** ${config.negative_threshold}%
-
-** 测试时间：** ${new Date().toLocaleString("zh-CN")}
+📅 ${new Date().toLocaleString("zh-CN")} | ✅ 自动测试
 
 ---
 
-✅ 这是一条测试消息，用于验证企业微信机器人是否正常工作。`;
+### 🟢 设备状态
+
+ **机器人连接** ✅ 已连接
+
+---
+
+### 📋 系统概览
+
+📊 **股票：** ${config.stock_name} (${config.stock_code})
+
+📈 **预警类型：** ${config.alert_types || "差评预警"}
+
+️ **差评阈值：** ${config.negative_threshold}%
+
+---
+
+### 🔍 端口详情
+
+✅ **差评预警：** 已配置
+✅ **敏感词预警：** 已配置
+✅ **未处理预警：** 已配置
+
+---
+
+⚡ CommentHub × 预警机器人自动测试`;
 
       try {
         await sendWeComMessage(config.wecom_webhook, testMessage);

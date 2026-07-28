@@ -67,28 +67,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 构建预警消息（Markdown 格式）
-    const message = `## 🚨 敏感字预警
+    // 构建预警消息（按照巡检报告风格）
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
 
-**股票：** ${stockName} (${stockCode})
+    const message = `📊 CommentHub 敏感字预警报告
 
-**⚠️ 检测到敏感字：** ${matchedWords.join(", ")}
-
----
-
-**📝 评论内容**
-
-**作者：** ${comment.username}
-**标题：** ${comment.title || "无"}
-**内容：** ${comment.comment_content}
-**时间：** ${comment.comment_time}
-**阅读：** ${comment.read_count || 0} | **评论：** ${comment.reply_count || 0}
+📅 ${dateStr} | ⏰ ${timeStr} |  实时预警
 
 ---
 
-**🔗 来源：** ${comment.source_url || "无"}
+🟢 **预警类型**
 
-**⏰ 预警时间：** ${new Date().toLocaleString("zh-CN")}`;
+🚨 敏感字预警
+
+---
+
+📋 **股票信息**
+
+📌 股票代码：${stockCode}
+📌 股票名称：${stockName}
+📌 敏感字：${matchedWords.join("、")}
+
+---
+
+📝 **评论详情**
+
+ 作者：${comment.username}
+ 标题：${comment.title || "无"}
+💬 内容：${comment.comment_content}
+🕐 时间：${comment.comment_time}
+👁️ 阅读：${comment.read_count || 0} | 💬 评论：${comment.reply_count || 0}
+🔗 来源：${comment.source_url || "无"}
+
+---
+
+⚡ CommentHub × 敏感字预警自动推送`;
 
     // 发送预警到所有配置的企微机器人
     const sendResults = await Promise.all(
