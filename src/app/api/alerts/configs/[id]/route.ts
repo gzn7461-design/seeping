@@ -3,9 +3,10 @@ import { getSupabaseClient } from "@/storage/database/supabase-client";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { stock_code, stock_name, negative_threshold, wecom_webhook, alert_types } = body;
 
@@ -28,7 +29,7 @@ export async function PUT(
         alert_types: alert_types || 'negative,sensitive_word',
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -51,15 +52,16 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = getSupabaseClient();
 
     const { error } = await supabase
       .from('alert_configs')
       .delete()
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (error) {
       throw error;
