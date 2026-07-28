@@ -50,9 +50,20 @@ export async function POST(request: NextRequest) {
         const webhook = config.wecom_webhook;
         if (webhook) {
           const message = {
-            msgtype: "text",
-            text: {
-              content: `【差评预警】${config.stock_name} (${config.stock_code})\n发现 ${negativeComments.length} 条未处理差评\n\n最新评论:\n${negativeComments.slice(0, 3).map((c: any) => `- ${c.comment_content?.substring(0, 50)}...`).join("\n")}\n\n请及时处理！`,
+            msgtype: "markdown",
+            markdown: {
+              content: `## ⚠️ 差评预警
+
+**股票：** ${config.stock_name} (${config.stock_code})
+
+**📊 未处理差评数：** ${negativeComments.length} 条
+
+**📝 最新评论：**
+${negativeComments.slice(0, 3).map((c: any) => `- ${c.comment_content?.substring(0, 50)}...`).join("\n")}
+
+---
+
+⏰ 请及时处理！`,
             },
           };
 
@@ -76,9 +87,20 @@ export async function POST(request: NextRequest) {
         const webhook = config.wecom_webhook;
         if (webhook) {
           const message = {
-            msgtype: "text",
-            text: {
-              content: `【敏感词预警】${config.stock_name} (${config.stock_code})\n发现 ${sensitiveComments.length} 条未处理敏感词评论\n\n最新评论:\n${sensitiveComments.slice(0, 3).map((c: any) => `- ${c.comment_content?.substring(0, 50)}... [敏感词: ${c.sensitive_words || ""}]`).join("\n")}\n\n请及时处理！`,
+            msgtype: "markdown",
+            markdown: {
+              content: `##  敏感词预警
+
+**股票：** ${config.stock_name} (${config.stock_code})
+
+**📊 未处理敏感词评论数：** ${sensitiveComments.length} 条
+
+**📝 最新评论：**
+${sensitiveComments.slice(0, 3).map((c: any) => `- ${c.comment_content?.substring(0, 50)}... [敏感词: ${c.sensitive_words || ""}]`).join("\n")}
+
+---
+
+⏰ 请及时处理！`,
             },
           };
 

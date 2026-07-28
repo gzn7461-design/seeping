@@ -6,8 +6,8 @@ async function sendWeComMessage(webhook: string, content: string) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      msgtype: "text",
-      text: { content },
+      msgtype: "markdown",
+      markdown: { content },
     }),
   });
   if (!res.ok) {
@@ -41,13 +41,19 @@ export async function POST(request: NextRequest) {
     for (const config of configs) {
       if (!config.wecom_webhook) continue;
 
-      const testMessage = `【预警测试】
-股票：${config.stock_name} (${config.stock_code})
-预警类型：${config.alert_types || "差评预警"}
-差评阈值：${config.negative_threshold}%
-测试时间：${new Date().toLocaleString("zh-CN")}
+      const testMessage = `## 🧪 预警测试
 
-这是一条测试消息，用于验证企业微信机器人是否正常工作。`;
+**股票：** ${config.stock_name} (${config.stock_code})
+
+**📋 预警类型：** ${config.alert_types || "差评预警"}
+
+**⚠️ 差评阈值：** ${config.negative_threshold}%
+
+** 测试时间：** ${new Date().toLocaleString("zh-CN")}
+
+---
+
+✅ 这是一条测试消息，用于验证企业微信机器人是否正常工作。`;
 
       try {
         await sendWeComMessage(config.wecom_webhook, testMessage);

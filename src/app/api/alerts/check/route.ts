@@ -92,12 +92,21 @@ export async function POST(request: NextRequest) {
 
       // 检查是否超过阈值
       if (negativePercentage >= threshold || force_check) {
-        const message = `【舆情预警】\n` +
-          `股票：${config.stock_name} (${config.stock_code})\n` +
-          `差评占比：${negativePercentage.toFixed(1)}% (${negativeComments}/${totalComments})\n` +
-          `预警阈值：${threshold}%\n` +
-          `统计时间：最近24小时\n` +
-          `请及时关注舆情动态！`;
+        const message = `## 🚨 舆情预警
+
+**股票：** ${config.stock_name} (${config.stock_code})
+
+**📊 差评占比：** ${negativePercentage.toFixed(1)}% (${negativeComments}/${totalComments})
+
+**⚠️ 预警阈值：** ${threshold}%
+
+**📅 统计时间：** 最近24小时
+
+---
+
+ **预警时间：** ${new Date().toLocaleString("zh-CN")}
+
+请及时关注舆情动态！`;
 
         // 发送企业微信消息
         try {

@@ -3,7 +3,7 @@ import { getSupabaseClient } from "@/storage/database/supabase-client";
 import { sensitiveWords as sensitiveWordsTable } from "@/storage/database/shared/schema";
 import { eq, and } from "drizzle-orm";
 
-// 发送企业微信机器人消息
+// 发送企业微信机器人消息（支持 Markdown）
 async function sendWeComMessage(webhook: string, content: string): Promise<boolean> {
   try {
     const response = await fetch(webhook, {
@@ -12,8 +12,8 @@ async function sendWeComMessage(webhook: string, content: string): Promise<boole
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        msgtype: "text",
-        text: {
+        msgtype: "markdown",
+        markdown: {
           content: content,
         },
       }),
@@ -67,22 +67,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 构建预警消息
-    const message = `【敏感字预警】
+    // 构建预警消息（Markdown 格式）
+    const message = `## 🚨 敏感字预警
 
- 股票：${stockName} (${stockCode})
-⚠️ 检测到敏感字：${matchedWords.join(", ")}
+**股票：** ${stockName} (${stockCode})
 
- 评论内容：
-作者：${comment.username}
-标题：${comment.title || "无"}
-内容：${comment.comment_content}
-时间：${comment.comment_time}
-阅读：${comment.read_count || 0} | 评论：${comment.reply_count || 0}
+**⚠️ 检测到敏感字：** ${matchedWords.join(", ")}
 
- 来源：${comment.source_url || "无"}
+---
 
-⏰ 预警时间：${new Date().toLocaleString("zh-CN")}`;
+**📝 评论内容**
+
+**作者：** ${comment.username}
+**标题：** ${comment.title || "无"}
+**内容：** ${comment.comment_content}
+**时间：** ${comment.comment_time}
+**阅读：** ${comment.read_count || 0} | **评论：** ${comment.reply_count || 0}
+
+---
+
+**🔗 来源：** ${comment.source_url || "无"}
+
+**⏰ 预警时间：** ${new Date().toLocaleString("zh-CN")}`;
 
     // 发送预警到所有配置的企微机器人
     const sendResults = await Promise.all(
