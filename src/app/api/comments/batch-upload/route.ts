@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import * as XLSX from "xlsx";
 
 // 时间格式转换：将 "07-27 14:38" 转换为 "2025-07-27 14:38:00"
 function parseCommentTime(timeStr: string | null | undefined): string {
@@ -59,17 +60,63 @@ async function checkSensitiveWords(text: string): Promise<{ has_sensitive_words:
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { comments } = body;
+    // 解析 formData（前端上传文件）
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
+    const stockCode = (formData.get("stock_code") as string) || "";
+    const stockName = (formData.get("stock_name") as string) || "";
 
-    console.log("收到上传请求，评论数量:", comments?.length);
-
-    if (!comments || !Array.isArray(comments) || comments.length === 0) {
+    if (!file) {
       return NextResponse.json(
-        { success: false, error: "评论数据不能为空" },
+        { success: false, error: "请上传文件" },
         { status: 400 }
       );
     }
+
+    if (!stockCode) {
+      return NextResponse.json(
+        { success: false, error: "请选择股票" },
+        { status: 400 }
+      );
+    }
+
+    // 解析 Excel 文件
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows: any[] = XLSX.utils.sheet_to_json(firstSheet);
+
+    if (!rows || rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "Excel 文件中没有数据" },
+        { status: 400 }
+      );
+    }
+
+    // 将 Excel 行映射为评论对象 - 兼容多种列名格式
+    const comments = rows.map((row: any) => {
+      const rowStockCode = String(row["股票代码"] || row["stock_code"] || row["代码"] || stockCode || "");
+      const rowStockName = String(row["股票名称"] || row["stock_name"] || row["名称"] || stockName || "未知股票");
+      const username = String(row["作者"] || row["username"] || row["用户名"] || "匿名用户");
+      const title = String(row["主评论"] || row["标题"] || row["title"] || row["帖子标题"] || "");
+      const commentContent = String(row["评论内容"] || row["content"] || row["评论"] || row["comment_content"] || row["内容"] || title);
+      const commentTime = String(row["最后更新"] || row["time"] || row["时间"] || row["更新时间"] || row["comment_time"] || "");
+      const sourceUrl = String(row["链接"] || row["url"] || row["source_url"] || row["来源"] || "");
+      const readCount = Number(row["阅读"] || row["read_count"] || row["阅读量"] || 0);
+      const replyCount = Number(row["评论数量"] || row["评论"] || row["reply_count"] || row["回复"] || 0);
+
+      return {
+        stock_code: rowStockCode || stockCode,
+        stock_name: rowStockName || stockName || "未知股票",
+        username,
+        comment_content: commentContent,
+        comment_time: commentTime,
+        source_url: sourceUrl,
+        read_count: readCount,
+        reply_count: replyCount,
+        title,
+      };
+    });
 
     const supabase = getSupabaseClient();
     const uploadedComments = [];
@@ -255,6 +302,12 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("批量上传评论失败:", error);
+    // 添加详细堆栈日志
+    if (error instanceof Error) {
+      console.error("错误名称:", error.name);
+      console.error("错误消息:", error.message);
+      console.error("错误堆栈:", error.stack);
+    }
     return NextResponse.json(
       { success: false, error: "服务器内部错误" },
       { status: 500 }
