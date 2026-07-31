@@ -290,7 +290,10 @@ export default function AlertsCenterPage() {
       });
       const data = await res.json();
       if (data.success) {
-        fetchAlertData();
+        // 直接更新本地状态，避免触发 re-render 循环
+        setAlertConfigs((prev) =>
+          prev.map((c) => (c.id === config.id ? { ...c, is_active: newStatus } : c))
+        );
       }
     } catch (error) {
       console.error("切换状态失败:", error);
