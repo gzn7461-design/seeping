@@ -241,6 +241,34 @@ export default function MonitorPage() {
         return;
       }
 
+      // 批量上传评论 - 支持多种列名映射（用于预览和日志）
+      const uploadData = jsonData.map((row) => {
+        // 尝试多种可能的列名
+        const stockCode = String(row["股票代码"] || row["stock_code"] || row["代码"] || uploadStockCode || "");
+        const stockName = String(row["股票名称"] || row["stock_name"] || row["名称"] || (uploadStockCode ? stocks.find(s => s.stock_code === uploadStockCode)?.stock_name || "" : ""));
+        const username = String(row["作者"] || row["username"] || row["用户名"] || "匿名用户");
+        const title = String(row["主评论"] || row["标题"] || row["title"] || row["帖子标题"] || "");
+        const commentContent = String(row["评论内容"] || row["content"] || row["评论"] || title);
+        const commentTime = String(row["最后更新"] || row["time"] || row["时间"] || row["更新时间"] || new Date().toISOString());
+        const sourceUrl = String(row["链接"] || row["url"] || row["source_url"] || row["来源"] || "");
+        const readCount = Number(row["阅读"] || row["read_count"] || row["阅读量"] || 0);
+        const replyCount = Number(row["评论数量"] || row["评论"] || row["reply_count"] || row["回复"] || 0);
+
+        return {
+          stock_code: stockCode,
+          stock_name: stockName,
+          username: username,
+          comment_content: commentContent,
+          comment_time: commentTime,
+          source_url: sourceUrl,
+          read_count: readCount,
+          reply_count: replyCount,
+          title: title,
+        };
+      });
+
+      console.log("上传数据:", uploadData);
+
       // 使用 formData 上传（与后端匹配）
       const formData = new FormData();
       formData.append("file", file);
