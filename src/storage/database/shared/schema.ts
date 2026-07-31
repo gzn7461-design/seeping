@@ -129,6 +129,8 @@ export const alertConfigs = pgTable(
     stock_name: varchar("stock_name", { length: 50 }).notNull(),
     // 预警阈值
     negative_threshold: varchar("negative_threshold", { length: 10 }).notNull().default("30"), // 差评占比阈值，如 30 表示 30%
+    // 检查间隔（分钟）
+    check_interval: varchar("check_interval", { length: 10 }).notNull().default("30"),
     // 企业微信机器人 webhook
     wecom_webhook: text("wecom_webhook").notNull(),
     // 状态

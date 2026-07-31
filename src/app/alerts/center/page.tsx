@@ -31,6 +31,7 @@ interface AlertConfig {
   stock_code: string;
   stock_name: string;
   negative_threshold: string;
+  check_interval?: string;
   wecom_webhook: string;
   alert_types?: string;
   is_active: string;
@@ -103,6 +104,7 @@ export default function AlertsCenterPage() {
     stock_code: "",
     stock_name: "",
     negative_threshold: "30",
+    check_interval: "30",
     wecom_webhook: "",
     alert_types: ["negative", "sensitive_word"],
   });
@@ -241,6 +243,7 @@ export default function AlertsCenterPage() {
       stock_code: config.stock_code,
       stock_name: config.stock_name,
       negative_threshold: config.negative_threshold,
+      check_interval: config.check_interval || "30",
       wecom_webhook: config.wecom_webhook,
       alert_types: config.alert_types ? config.alert_types.split(",") : ["negative", "sensitive_word"],
     });
@@ -465,7 +468,7 @@ export default function AlertsCenterPage() {
     }
   };
 
-  // 定时检查未处理的差评和敏感词（每30分钟）
+  // 定时检查未处理的差评和敏感词（根据配置的间隔时间）
   useEffect(() => {
     const checkUnprocessed = async () => {
       try {
@@ -480,11 +483,18 @@ export default function AlertsCenterPage() {
     // 立即执行一次
     checkUnprocessed();
 
-    // 每30分钟执行一次
-    const interval = setInterval(checkUnprocessed, 30 * 60 * 1000);
+    // 获取最小间隔（分钟），默认30分钟
+    const intervals = alertConfigs
+      .filter((c) => c.is_active === "true")
+      .map((c) => parseInt(c.check_interval || "30"))
+      .filter((v) => !isNaN(v) && v >= 5);
+    const minInterval = intervals.length > 0 ? Math.min(...intervals) : 30;
+
+    // 按配置的间隔执行
+    const interval = setInterval(checkUnprocessed, minInterval * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [alertConfigs]);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -852,6 +862,21 @@ export default function AlertsCenterPage() {
                       </div>
 
                       <div className="space-y-2">
+                        <Label>检查间隔（分钟）</Label>
+                        <Input
+                          type="number"
+                          min="5"
+                          max="1440"
+                          value={configForm.check_interval}
+                          onChange={(e) => setConfigForm({ ...configForm, check_interval: e.target.value })}
+                          placeholder="如 30"
+                        />
+                        <p className="text-sm text-gray-500">
+                          每隔多少分钟自动检查一次未处理的差评和敏感词（最小 5 分钟，最大 1440 分钟）
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
                         <Label>企业微信机器人 Webhook</Label>
                         <Input
                           value={configForm.wecom_webhook}
@@ -946,6 +971,10 @@ export default function AlertsCenterPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-500">
                             阈值：{config.negative_threshold}%
+                          </span>
+                          <span className="text-sm text-gray-400">|</span>
+                          <span className="text-sm text-gray-500">
+                            间隔：{config.check_interval || "30"}分钟
                           </span>
                           <Button
                             variant="ghost"
