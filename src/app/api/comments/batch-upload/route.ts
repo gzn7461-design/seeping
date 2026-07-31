@@ -219,8 +219,13 @@ export async function POST(request: NextRequest) {
           const { stock_code, stock_name, comments } = stockGroup;
           for (const comment of comments) {
             try {
-              const matchedWords = JSON.parse(comment.sensitive_words || "[]");
-              await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/alerts/sensitive-word`, {
+              let matchedWords: string[] = [];
+              try {
+                matchedWords = JSON.parse(comment.sensitive_words || "[]");
+              } catch {
+                matchedWords = [];
+              }
+              await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:5000"}/api/alerts/sensitive-word`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
