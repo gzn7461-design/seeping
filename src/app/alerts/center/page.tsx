@@ -83,6 +83,10 @@ export default function AlertsCenterPage() {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 20;
   const [stats, setStats] = useState({
     totalAlerts: 0,
     todayAlerts: 0,
@@ -114,7 +118,7 @@ export default function AlertsCenterPage() {
   useEffect(() => {
     fetchAlertData();
     fetchStocks();
-    fetchComments();
+    fetchComments(1);
   }, []);
 
   const fetchAlertData = async () => {
@@ -179,19 +183,22 @@ export default function AlertsCenterPage() {
     }
   };
 
-  const fetchComments = async () => {
+  const fetchComments = async (page = 1) => {
     try {
       // 获取今日的数据
       const today = new Date();
       const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const res = await fetch(`/api/comments?limit=100&date=${startDate.toISOString()}`);
+      const res = await fetch(`/api/comments?page=${page}&pageSize=${pageSize}&date=${startDate.toISOString()}`);
       const data = await res.json();
       if (data.success) {
         setComments(data.data || []);
+        setCurrentPage(data.pagination?.page || 1);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotalCount(data.pagination?.total || 0);
         const negativeCount = (data.data || []).filter((c: Comment) => c.sentiment === "negative").length;
         setStats(prev => ({
           ...prev,
-          totalComments: (data.data || []).length,
+          totalComments: data.pagination?.total || 0,
           negativeComments: negativeCount,
         }));
       }
@@ -337,7 +344,7 @@ export default function AlertsCenterPage() {
           msg += `，其中 ${data.data.sensitiveCount} 条包含敏感字`;
         }
         alert(msg);
-        fetchComments();
+        fetchComments(1);
         fetchAlertData();
       } else {
         alert(data.error || "上传失败");
@@ -385,7 +392,7 @@ export default function AlertsCenterPage() {
       const data = await res.json();
       if (data.success) {
         alert(`成功分析 ${data.data.length} 条评论`);
-        fetchComments();
+        fetchComments(1);
         fetchAlertData();
       } else {
         alert(data.error || "分析失败");
@@ -404,7 +411,7 @@ export default function AlertsCenterPage() {
       const data = await res.json();
       if (data.success) {
         alert("已标记为已处理");
-        fetchComments();
+        fetchComments(1);
       } else {
         alert(data.error || "处理失败");
       }
@@ -426,7 +433,7 @@ export default function AlertsCenterPage() {
       const data = await res.json();
       if (data.success) {
         alert("删除成功");
-        fetchComments();
+        fetchComments(1);
         fetchAlertData();
       } else {
         alert(data.error || "删除失败");
@@ -673,7 +680,7 @@ export default function AlertsCenterPage() {
                 <div className="text-center py-8 text-gray-500">暂无评论数据</div>
               ) : (
                 <div className="space-y-4">
-                  {comments.slice(0, 20).map((comment) => (
+                  {comments.map((comment) => (
                     <div
                       key={comment.id}
                       className="border rounded-lg p-4 space-y-2 cursor-pointer hover:bg-gray-50"
@@ -737,6 +744,49 @@ export default function AlertsCenterPage() {
                       )}
                     </div>
                   ))}
+
+                  {/* 分页控件 */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <div className="text-sm text-gray-500">
+                        共 {totalCount} 条，第 {currentPage}/{totalPages} 页
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={currentPage <= 1}
+                          onClick={() => fetchComments(currentPage - 1)}
+                        >
+                          上一页
+                        </Button>
+                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                          const start = Math.max(1, currentPage - 2);
+                          const pageNum = start + i;
+                          if (pageNum > totalPages) return null;
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={pageNum === currentPage ? "default" : "outline"}
+                              size="sm"
+                              className="min-w-[36px]"
+                              onClick={() => fetchComments(pageNum)}
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        })}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={currentPage >= totalPages}
+                          onClick={() => fetchComments(currentPage + 1)}
+                        >
+                          下一页
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
