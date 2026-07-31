@@ -23,7 +23,7 @@ export async function GET() {
     return new NextResponse(csvWithBom, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="评论数据导入模板.csv"`,
+        "Content-Disposition": `attachment; filename="comment_template.csv"; filename*=UTF-8''${encodeURIComponent("评论数据导入模板.csv")}`,
       },
     });
   } catch (error: any) {
