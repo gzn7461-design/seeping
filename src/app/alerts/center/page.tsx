@@ -348,6 +348,23 @@ export default function AlertsCenterPage() {
     }
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await fetch("/api/comments/template");
+      if (!response.ok) throw new Error("下载失败");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "评论数据导入模板.csv";
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("下载模板失败:", error);
+      alert("下载模板失败");
+    }
+  };
+
   const handleAnalyzeAll = async () => {
     try {
       // 获取所有未分析的评论ID
@@ -630,11 +647,9 @@ export default function AlertsCenterPage() {
                   <Button onClick={handleAnalyzeAll} variant="outline">
                     一键分析
                   </Button>
-                  <Button variant="outline" asChild>
-                    <a href="/api/comments/template" download>
-                      <Download className="h-4 w-4 mr-2" />
-                      下载模板
-                    </a>
+                  <Button variant="outline" onClick={handleDownloadTemplate}>
+                    <Download className="h-4 w-4 mr-2" />
+                    下载模板
                   </Button>
                   <Button asChild>
                     <label className="cursor-pointer">
