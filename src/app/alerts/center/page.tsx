@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -268,6 +269,31 @@ export default function AlertsCenterPage() {
     } catch (error) {
       console.error("删除预警配置失败:", error);
       alert("删除失败");
+    }
+  };
+
+  const toggleConfigStatus = async (config: AlertConfig) => {
+    try {
+      const newStatus = config.is_active === "true" ? "false" : "true";
+      const res = await fetch(`/api/alerts/configs/${config.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stock_code: config.stock_code,
+          stock_name: config.stock_name,
+          negative_threshold: config.negative_threshold,
+          check_interval: config.check_interval || "30",
+          wecom_webhook: config.wecom_webhook,
+          alert_types: config.alert_types,
+          is_active: newStatus,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAlertData();
+      }
+    } catch (error) {
+      console.error("切换状态失败:", error);
     }
   };
 
@@ -960,10 +986,11 @@ export default function AlertsCenterPage() {
                   {alertConfigs.map((config) => (
                     <div key={config.id} className="border rounded-lg p-4 space-y-2">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge variant={config.is_active === "true" ? "default" : "secondary"}>
-                            {config.is_active === "true" ? "启用" : "禁用"}
-                          </Badge>
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={config.is_active === "true"}
+                            onCheckedChange={() => toggleConfigStatus(config)}
+                          />
                           <span className="font-medium">
                             {config.stock_name} ({config.stock_code})
                           </span>
