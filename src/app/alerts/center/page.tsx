@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity, Plus, Upload, BarChart3, Calendar, Send, Edit, Trash2 } from "lucide-react";
+import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity, Plus, Upload, BarChart3, Calendar, Send, Edit, Trash2, Download } from "lucide-react";
 import Link from "next/link";
 
 interface AlertRecord {
@@ -629,6 +629,12 @@ export default function AlertsCenterPage() {
                   </div>
                   <Button onClick={handleAnalyzeAll} variant="outline">
                     一键分析
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <a href="/api/comments/template" download>
+                      <Download className="h-4 w-4 mr-2" />
+                      下载模板
+                    </a>
                   </Button>
                   <Button asChild>
                     <label className="cursor-pointer">
