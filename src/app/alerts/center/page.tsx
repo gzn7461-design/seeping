@@ -76,6 +76,7 @@ interface Comment {
   is_processed: string;
   collected_at: string;
   created_at: string;
+  analyzing?: boolean;
 }
 
 export default function AlertsCenterPage() {
@@ -121,6 +122,8 @@ export default function AlertsCenterPage() {
   // 评论详情
   const [showCommentDetail, setShowCommentDetail] = useState(false);
   const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeProgress, setAnalyzeProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
     fetchAlertData();
@@ -417,30 +420,64 @@ export default function AlertsCenterPage() {
   const handleAnalyzeAll = async () => {
     try {
       // 获取所有未分析的评论ID
-      const unanalyzedIds = comments
+      let unanalyzedIds = comments
         .filter((c) => !c.sentiment || c.sentiment === "neutral")
         .map((c) => c.id);
+
+      // 如果当前页没有未分析的，从所有评论中找
+      if (unanalyzedIds.length === 0) {
+        const res = await fetch(`/api/comments?page=1&pageSize=200&date=${selectedDate}`);
+        const data = await res.json();
+        if (data.success) {
+          unanalyzedIds = data.data
+            .filter((c: Comment) => !c.sentiment || c.sentiment === "neutral")
+            .map((c: Comment) => c.id);
+        }
+      }
 
       if (unanalyzedIds.length === 0) {
         alert("没有需要分析的评论");
         return;
       }
 
-      const res = await fetch("/api/comments/batch-analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ comment_ids: unanalyzedIds }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(`成功分析 ${data.data.length} 条评论`);
-        fetchComments(1);
-        fetchAlertData();
-      } else {
-        alert(data.error || "分析失败");
+      setAnalyzing(true);
+      setAnalyzeProgress({ current: 0, total: unanalyzedIds.length });
+      let successCount = 0;
+      let failCount = 0;
+
+      // 逐条分析，每批并发5条
+      const batchSize = 5;
+      for (let i = 0; i < unanalyzedIds.length; i += batchSize) {
+        const batch = unanalyzedIds.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(async (id) => {
+            try {
+              const res = await fetch("/api/comments/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ comment_id: id }),
+              });
+              const data = await res.json();
+              if (data.success) {
+                successCount++;
+              } else {
+                failCount++;
+              }
+            } catch {
+              failCount++;
+            }
+          })
+        );
+        setAnalyzeProgress({ current: Math.min(i + batchSize, unanalyzedIds.length), total: unanalyzedIds.length });
       }
+
+      setAnalyzing(false);
+      alert(`分析完成：成功 ${successCount} 条，失败 ${failCount} 条`);
+      fetchComments(1);
+      fetchAlertData();
     } catch (error) {
       console.error("分析失败:", error);
+      setAnalyzing(false);
       alert("分析失败");
     }
   };
@@ -700,9 +737,20 @@ export default function AlertsCenterPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={handleAnalyzeAll} variant="outline">
-                    一键分析
+                  <Button onClick={handleAnalyzeAll} variant="outline" disabled={analyzing}>
+                    {analyzing ? "分析中..." : "一键分析"}
                   </Button>
+                  {analyzing && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                          style={{ width: `${(analyzeProgress.current / analyzeProgress.total) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500">{analyzeProgress.current}/{analyzeProgress.total}</span>
+                    </div>
+                  )}
                   <Button variant="outline" onClick={handleDownloadTemplate}>
                     <Download className="h-4 w-4 mr-2" />
                     下载模板
@@ -1247,8 +1295,9 @@ export default function AlertsCenterPage() {
                       value={selectedComment.sentiment}
                       onValueChange={async (value) => {
                         const oldSentiment = selectedComment.sentiment;
-                        setSelectedComment({ ...selectedComment, sentiment: value });
+                        setSelectedComment({ ...selectedComment, sentiment: value, analyzing: true });
                         try {
+                          // 先更新情感
                           const res = await fetch(`/api/comments/${selectedComment.id}`, {
                             method: "PUT",
                             headers: { "Content-Type": "application/json" },
@@ -1256,10 +1305,26 @@ export default function AlertsCenterPage() {
                           });
                           const data = await res.json();
                           if (!data.success) throw new Error(data.error);
+
+                          // 再触发AI重新分析
+                          try {
+                            const analyzeRes = await fetch("/api/comments/analyze", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ comment_id: selectedComment.id }),
+                            });
+                            const analyzeData = await analyzeRes.json();
+                            if (analyzeData.success) {
+                              setSelectedComment({ ...analyzeData.data, analyzing: false });
+                            }
+                          } catch {
+                            setSelectedComment(prev => prev ? { ...prev, analyzing: false } : null);
+                          }
+
                           fetchComments(currentPage);
                         } catch (error) {
                           console.error("更新情感失败:", error);
-                          setSelectedComment({ ...selectedComment, sentiment: oldSentiment });
+                          setSelectedComment({ ...selectedComment, sentiment: oldSentiment, analyzing: false });
                         }
                       }}
                     >
@@ -1327,41 +1392,37 @@ export default function AlertsCenterPage() {
                               <span className="text-xs text-gray-600 font-medium">情感判断：</span>
                               <Badge
                                 variant={
-                                  analysis.sentiment_label === "positive"
+                                  analysis.sentiment === "positive"
                                     ? "default"
-                                    : analysis.sentiment_label === "negative"
+                                    : analysis.sentiment === "negative"
                                     ? "destructive"
                                     : "secondary"
                                 }
                               >
-                                {analysis.sentiment_label === "positive"
-                                  ? "好评"
-                                  : analysis.sentiment_label === "negative"
-                                  ? "差评"
-                                  : "一般"}
+                                {analysis.sentiment_label}
                               </Badge>
                             </div>
                           )}
                           {/* 情感评分 */}
-                          {analysis.sentiment_score !== undefined && (
+                          {(analysis.strength !== undefined || analysis.sentiment_score !== undefined) && (
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-600 font-medium">情感评分：</span>
+                              <span className="text-xs text-gray-600 font-medium">情感强度：</span>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <div className="flex-1 bg-gray-200 rounded-full h-2">
                                     <div
                                       className={`h-2 rounded-full ${
-                                        analysis.sentiment_score > 0.7
+                                        (analysis.strength ?? analysis.sentiment_score) > 0.6
                                           ? "bg-green-500"
-                                          : analysis.sentiment_score > 0.4
+                                          : (analysis.strength ?? analysis.sentiment_score) > 0.3
                                           ? "bg-yellow-500"
                                           : "bg-red-500"
                                       }`}
-                                      style={{ width: `${analysis.sentiment_score * 100}%` }}
+                                      style={{ width: `${(analysis.strength ?? analysis.sentiment_score) * 100}%` }}
                                     />
                                   </div>
                                   <span className="text-sm font-medium text-gray-700">
-                                    {(analysis.sentiment_score * 100).toFixed(0)}%
+                                    {((analysis.strength ?? analysis.sentiment_score) * 100).toFixed(0)}%
                                   </span>
                                 </div>
                               </div>
