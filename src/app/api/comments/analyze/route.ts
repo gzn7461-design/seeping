@@ -38,17 +38,24 @@ export async function POST(request: NextRequest) {
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       {
         role: 'system' as const,
-        content: `你是一个专业的股票舆情分析师。请分析以下股吧评论的情感倾向，并给出详细分析。
+        content: `你是一位资深的股票舆情分析师，请对以下股吧评论进行专业、准确的情感分析。
 
-请按照以下格式输出：
+## 分析要求
+
+### 情感倾向分类
+- **看好（positive）**：表达乐观、看涨，如"涨停""突破""利好""底部""抄底"
+- **看空（negative）**：表达悲观、看跌，如"跌停""割肉""套牢""利空""崩盘"
+- **中性（neutral）**：客观陈述、信息分享、无明显情绪倾向
+
+### 分析维度
 1. 情感分类：[positive/neutral/negative]
 2. 情感得分：[-1.0 到 1.0 之间，-1为极度负面，1为极度正面]
-3. 分析理由：简要说明为什么做出这个判断
-4. 关键词：提取评论中的关键情感词`,
+3. 分析理由：具体指出评论中哪些词语或表达体现了该情感倾向（2-3句话）
+4. 关键词：提取评论中的关键情感词（3-5个）`,
       },
       {
         role: 'user' as const,
-        content: comment.comment_content,
+        content: `股票：${comment.stock_name} (${comment.stock_code})\n评论标题：${comment.title || "无"}\n评论内容：${comment.comment_content}`,
       },
     ];
 
