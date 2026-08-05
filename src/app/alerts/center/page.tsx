@@ -1242,7 +1242,48 @@ export default function AlertsCenterPage() {
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">情感分类</div>
-                  <div className="mt-1">
+                  <div className="mt-1 flex items-center gap-2">
+                    <Select
+                      value={selectedComment.sentiment}
+                      onValueChange={async (value) => {
+                        const oldSentiment = selectedComment.sentiment;
+                        setSelectedComment({ ...selectedComment, sentiment: value });
+                        try {
+                          const res = await fetch(`/api/comments/${selectedComment.id}`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ sentiment: value }),
+                          });
+                          const data = await res.json();
+                          if (!data.success) throw new Error(data.error);
+                          fetchComments(currentPage);
+                        } catch (error) {
+                          console.error("更新情感失败:", error);
+                          setSelectedComment({ ...selectedComment, sentiment: oldSentiment });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="positive">
+                          <span className="flex items-center gap-1">
+                            <span className="text-green-600">👍</span> 好评
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="neutral">
+                          <span className="flex items-center gap-1">
+                            <span className="text-yellow-600">➖</span> 一般
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="negative">
+                          <span className="flex items-center gap-1">
+                            <span className="text-red-600">👎</span> 差评
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                     {getSentimentBadge(selectedComment.sentiment)}
                   </div>
                 </div>
