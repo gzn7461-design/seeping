@@ -110,6 +110,10 @@ export default function AlertsCenterPage() {
     alert_types: ["negative", "sensitive_word"],
   });
 
+  // 日期筛选
+  const [selectedDate, setSelectedDate] = useState("today");
+  const [customDate, setCustomDate] = useState("");
+
   // 评论上传
   const [uploadStockCode, setUploadStockCode] = useState("");
   const [uploadStockName, setUploadStockName] = useState("");
@@ -186,12 +190,18 @@ export default function AlertsCenterPage() {
     }
   };
 
-  const fetchComments = async (page = 1) => {
+  const fetchComments = async (page = 1, date?: string) => {
     try {
-      // 获取今日的数据
-      const today = new Date();
-      const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const res = await fetch(`/api/comments?page=${page}&pageSize=${pageSize}&date=${startDate.toISOString()}`);
+      const dateParam = date || selectedDate;
+      let url = `/api/comments?page=${page}&pageSize=${pageSize}`;
+      if (dateParam === "custom" && customDate) {
+        const d = new Date(customDate);
+        d.setHours(0, 0, 0, 0);
+        url += `&date=${d.toISOString()}`;
+      } else if (dateParam !== "all") {
+        url += `&date=${dateParam}`;
+      }
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setComments(data.data || []);
@@ -710,6 +720,57 @@ export default function AlertsCenterPage() {
                     </label>
                   </Button>
                 </div>
+              </div>
+              {/* 日期筛选 */}
+              <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                  {[
+                    { value: "today", label: "今天" },
+                    { value: "week", label: "本周" },
+                    { value: "month", label: "本月" },
+                    { value: "all", label: "全部" },
+                  ].map((item) => (
+                    <Button
+                      key={item.value}
+                      variant={selectedDate === item.value ? "default" : "ghost"}
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        setSelectedDate(item.value);
+                        setCustomDate("");
+                        fetchComments(1, item.value);
+                      }}
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+                {selectedDate === "custom" && (
+                  <Input
+                    type="date"
+                    value={customDate}
+                    onChange={(e) => {
+                      setCustomDate(e.target.value);
+                      if (e.target.value) fetchComments(1, "custom");
+                    }}
+                    className="h-8 w-40 text-xs"
+                  />
+                )}
+                {selectedDate !== "custom" && selectedDate !== "all" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      setSelectedDate("custom");
+                    }}
+                  >
+                    自定义
+                  </Button>
+                )}
+                <span className="text-xs text-muted-foreground ml-auto">
+                  共 {totalCount} 条评论
+                </span>
               </div>
             </CardHeader>
             <CardContent>
