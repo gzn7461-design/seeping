@@ -115,6 +115,9 @@ export default function AlertsCenterPage() {
   const [selectedDate, setSelectedDate] = useState("today");
   const [customDate, setCustomDate] = useState("");
 
+  // 批量选择
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   // 评论上传
   const [uploadStockCode, setUploadStockCode] = useState("");
   const [uploadStockName, setUploadStockName] = useState("");
@@ -523,6 +526,37 @@ export default function AlertsCenterPage() {
     }
   };
 
+  const handleBatchDelete = async () => {
+    const count = selectedIds.size;
+    if (count === 0) {
+      alert("请先选择要删除的评论");
+      return;
+    }
+    if (!confirm(`确定要删除选中的 ${count} 条评论吗？此操作不可恢复。`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/comments/batch-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`成功删除 ${data.data.deleted} 条评论`);
+        setSelectedIds(new Set());
+        fetchComments(1);
+        fetchAlertData();
+      } else {
+        alert(data.error || "批量删除失败");
+      }
+    } catch (error) {
+      console.error("批量删除失败:", error);
+      alert("批量删除失败");
+    }
+  };
+
   const handleTestAlert = async () => {
     if (!confirm("确定要发送预警测试消息吗？将向所有活跃配置的企业微信机器人发送测试消息。")) {
       return;
@@ -819,6 +853,21 @@ export default function AlertsCenterPage() {
                 <span className="text-xs text-muted-foreground ml-auto">
                   共 {totalCount} 条评论
                 </span>
+                {selectedIds.size > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      已选 {selectedIds.size} 条
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-8 text-xs"
+                      onClick={handleBatchDelete}
+                    >
+                      批量删除
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -831,7 +880,9 @@ export default function AlertsCenterPage() {
                   {comments.map((comment) => (
                     <div
                       key={comment.id}
-                      className="border rounded-lg p-4 space-y-2 cursor-pointer hover:bg-gray-50"
+                      className={`border rounded-lg p-4 space-y-2 cursor-pointer hover:bg-gray-50 ${
+                        selectedIds.has(comment.id) ? "border-blue-400 bg-blue-50" : ""
+                      }`}
                       onClick={() => {
                         setSelectedComment(comment);
                         setShowCommentDetail(true);
@@ -839,6 +890,21 @@ export default function AlertsCenterPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 cursor-pointer"
+                            checked={selectedIds.has(comment.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => {
+                              const newSet = new Set(selectedIds);
+                              if (newSet.has(comment.id)) {
+                                newSet.delete(comment.id);
+                              } else {
+                                newSet.add(comment.id);
+                              }
+                              setSelectedIds(newSet);
+                            }}
+                          />
                           {getSentimentBadge(comment.sentiment)}
                           {comment.has_sensitive_words === "true" && (
                             <Badge variant="destructive">敏感</Badge>
