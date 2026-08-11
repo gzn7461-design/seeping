@@ -5,7 +5,7 @@ import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { comment_id } = body;
+    const { comment_id, preserve_sentiment } = body;
 
     if (!comment_id) {
       return NextResponse.json(
@@ -93,7 +93,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (aiResult) {
-      sentiment = aiResult.sentiment || sentiment;
+      if (!preserve_sentiment) {
+        sentiment = aiResult.sentiment || sentiment;
+      }
       sentimentScore = aiResult.strength !== undefined ? String(aiResult.strength) : sentimentScore;
     }
 

@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity, Plus, Upload, BarChart3, Calendar, Send, Edit, Trash2, Download } from "lucide-react";
+import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity, Plus, Upload, BarChart3, Calendar, Send, Edit, Trash2, Download, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 interface AlertRecord {
@@ -33,6 +33,8 @@ interface AlertConfig {
   stock_name: string;
   negative_threshold: string;
   check_interval?: string;
+  daily_push_enabled?: string;
+  daily_push_time?: string;
   wecom_webhook: string;
   alert_types?: string;
   is_active: string;
@@ -109,6 +111,8 @@ export default function AlertsCenterPage() {
     check_interval: "30",
     wecom_webhook: "",
     alert_types: ["negative", "sensitive_word"],
+    daily_push_enabled: "false",
+    daily_push_time: "17:00",
   });
 
   // 日期筛选
@@ -121,6 +125,14 @@ export default function AlertsCenterPage() {
   // 评论上传
   const [uploadStockCode, setUploadStockCode] = useState("");
   const [uploadStockName, setUploadStockName] = useState("");
+
+  // 整体分析
+  const [overallStartDate, setOverallStartDate] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split("T")[0];
+  });
+  const [overallEndDate, setOverallEndDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [overallAnalyzing, setOverallAnalyzing] = useState(false);
+  const [overallAnalysis, setOverallAnalysis] = useState<any>(null);
 
   // 评论详情
   const [showCommentDetail, setShowCommentDetail] = useState(false);
@@ -263,6 +275,8 @@ export default function AlertsCenterPage() {
       check_interval: config.check_interval || "30",
       wecom_webhook: config.wecom_webhook,
       alert_types: config.alert_types ? config.alert_types.split(",") : ["negative", "sensitive_word"],
+      daily_push_enabled: config.daily_push_enabled || "false",
+      daily_push_time: config.daily_push_time || "17:00",
     });
     setShowConfigDialog(true);
   };
@@ -299,6 +313,8 @@ export default function AlertsCenterPage() {
           stock_name: config.stock_name,
           negative_threshold: config.negative_threshold,
           check_interval: config.check_interval || "30",
+          daily_push_enabled: config.daily_push_enabled || "false",
+          daily_push_time: config.daily_push_time || null,
           wecom_webhook: config.wecom_webhook,
           alert_types: config.alert_types,
           is_active: newStatus,
@@ -578,6 +594,36 @@ export default function AlertsCenterPage() {
     }
   };
 
+  const handleOverallAnalysis = async () => {
+    if (!overallStartDate || !overallEndDate) {
+      alert("请选择开始和结束日期");
+      return;
+    }
+    setOverallAnalyzing(true);
+    setOverallAnalysis(null);
+    try {
+      const res = await fetch("/api/comments/overall-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          start_date: overallStartDate,
+          end_date: overallEndDate,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOverallAnalysis(data.data);
+      } else {
+        alert(data.error || "分析失败");
+      }
+    } catch (error) {
+      console.error("整体分析失败:", error);
+      alert("分析失败，请重试");
+    } finally {
+      setOverallAnalyzing(false);
+    }
+  };
+
   // 定时检查未处理的差评和敏感词（根据配置的间隔时间）
   useEffect(() => {
     const checkUnprocessed = async () => {
@@ -587,6 +633,36 @@ export default function AlertsCenterPage() {
         });
       } catch (error) {
         console.error("定时检查失败:", error);
+      }
+    };
+
+    // 每日推送检查
+    const checkDailyPush = async () => {
+      const now = new Date();
+      const currentHour = now.getHours().toString().padStart(2, "0");
+      const currentMin = now.getMinutes().toString().padStart(2, "0");
+      const currentTime = `${currentHour}:${currentMin}`;
+
+      for (const config of alertConfigs) {
+        if (
+          config.is_active === "true" &&
+          config.daily_push_enabled === "true" &&
+          config.daily_push_time === currentTime
+        ) {
+          try {
+            await fetch("/api/comments/daily-push", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                stock_code: config.stock_code,
+                stock_name: config.stock_name,
+                wecom_webhook: config.wecom_webhook,
+              }),
+            });
+          } catch (error) {
+            console.error("每日推送失败:", error);
+          }
+        }
       }
     };
 
@@ -600,10 +676,15 @@ export default function AlertsCenterPage() {
       .filter((v) => !isNaN(v) && v >= 5);
     const minInterval = intervals.length > 0 ? Math.min(...intervals) : 30;
 
-    // 按配置的间隔执行
+    // 按配置的间隔执行检查
     const interval = setInterval(checkUnprocessed, minInterval * 60 * 1000);
+    // 每分钟检查一次是否需要推送日报
+    const dailyPushInterval = setInterval(checkDailyPush, 60 * 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearInterval(dailyPushInterval);
+    };
   }, [alertConfigs]);
 
   return (
@@ -1005,6 +1086,122 @@ export default function AlertsCenterPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* 评论整体分析 */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>评论整体分析</CardTitle>
+                  <CardDescription>选择时间段，AI 分析该时间段内的评论整体舆论倾向</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">开始日期</span>
+                  <input
+                    type="date"
+                    className="border rounded-md px-3 py-1.5 text-sm"
+                    value={overallStartDate}
+                    onChange={(e) => setOverallStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">结束日期</span>
+                  <input
+                    type="date"
+                    className="border rounded-md px-3 py-1.5 text-sm"
+                    value={overallEndDate}
+                    onChange={(e) => setOverallEndDate(e.target.value)}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleOverallAnalysis}
+                  disabled={overallAnalyzing}
+                >
+                  {overallAnalyzing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      分析中...
+                    </>
+                  ) : (
+                    <>
+                      <BarChart3 className="h-4 w-4 mr-1" />
+                      整体分析
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {overallAnalysis && (
+                <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="text-muted-foreground">
+                      共 <strong>{overallAnalysis.total}</strong> 条评论
+                    </span>
+                    <span className="text-green-600">看好 {overallAnalysis.stats.positive}</span>
+                    <span className="text-yellow-600">中性 {overallAnalysis.stats.neutral}</span>
+                    <span className="text-red-600">看空 {overallAnalysis.stats.negative}</span>
+                    {overallAnalysis.sensitiveCount > 0 && (
+                      <span className="text-purple-600">敏感字 {overallAnalysis.sensitiveCount}</span>
+                    )}
+                  </div>
+
+                  {overallAnalysis.analysis && (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">整体倾向：</span>
+                        <Badge variant={
+                          overallAnalysis.analysis.overall_sentiment === "看好" ? "default" :
+                          overallAnalysis.analysis.overall_sentiment === "看空" ? "destructive" : "secondary"
+                        }>
+                          {overallAnalysis.analysis.overall_sentiment}
+                        </Badge>
+                        {overallAnalysis.analysis.confidence && (
+                          <span className="text-muted-foreground">
+                            置信度 {(overallAnalysis.analysis.confidence * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <span className="font-medium">分析摘要：</span>
+                        <p className="text-muted-foreground mt-1">{overallAnalysis.analysis.summary}</p>
+                      </div>
+                      {overallAnalysis.analysis.key_points && overallAnalysis.analysis.key_points.length > 0 && (
+                        <div>
+                          <span className="font-medium">主要关注点：</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {overallAnalysis.analysis.key_points.map((point: string, i: number) => (
+                              <Badge key={i} variant="outline" className="text-xs">{point}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {overallAnalysis.analysis.risk_warnings && overallAnalysis.analysis.risk_warnings.length > 0 && (
+                        <div>
+                          <span className="font-medium text-red-600">风险提示：</span>
+                          <ul className="list-disc list-inside text-red-600/80 mt-1 space-y-0.5">
+                            {overallAnalysis.analysis.risk_warnings.map((warn: string, i: number) => (
+                              <li key={i}>{warn}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {overallAnalysis.analysis.suggestion && (
+                        <div>
+                          <span className="font-medium">投资建议：</span>
+                          <p className="text-muted-foreground mt-1">{overallAnalysis.analysis.suggestion}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* 预警配置 */}
@@ -1144,6 +1341,35 @@ export default function AlertsCenterPage() {
                         </div>
                       </div>
 
+                      {/* 每日推送设置 */}
+                      <div className="border-t pt-4">
+                        <h4 className="text-sm font-medium mb-3">📊 每日推送设置</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={configForm.daily_push_enabled === "true"}
+                              onCheckedChange={(checked) =>
+                                setConfigForm({ ...configForm, daily_push_enabled: checked ? "true" : "false" })
+                              }
+                            />
+                            <label className="text-sm">启用每日评论数据推送</label>
+                          </div>
+                          {configForm.daily_push_enabled === "true" && (
+                            <div className="flex items-center gap-2 ml-8">
+                              <span className="text-sm text-gray-500">推送时间：</span>
+                              <input
+                                type="time"
+                                value={configForm.daily_push_time}
+                                onChange={(e) =>
+                                  setConfigForm({ ...configForm, daily_push_time: e.target.value })
+                                }
+                                className="border rounded px-2 py-1 text-sm"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" onClick={() => setShowConfigDialog(false)}>
                           取消
@@ -1180,6 +1406,10 @@ export default function AlertsCenterPage() {
                           <span className="text-sm text-gray-400">|</span>
                           <span className="text-sm text-gray-500">
                             间隔：{config.check_interval || "30"}分钟
+                          </span>
+                          <span className="text-sm text-gray-400">|</span>
+                          <span className="text-sm text-gray-500">
+                            日报：{config.daily_push_enabled === "true" ? `${config.daily_push_time || "17:00"}推送` : "关闭"}
                           </span>
                           <Button
                             variant="ghost"
@@ -1372,12 +1602,12 @@ export default function AlertsCenterPage() {
                           const data = await res.json();
                           if (!data.success) throw new Error(data.error);
 
-                          // 再触发AI重新分析
+                          // 再触发AI重新分析（保留手动选择的情感）
                           try {
                             const analyzeRes = await fetch("/api/comments/analyze", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ comment_id: selectedComment.id }),
+                              body: JSON.stringify({ comment_id: selectedComment.id, preserve_sentiment: true }),
                             });
                             const analyzeData = await analyzeRes.json();
                             if (analyzeData.success) {

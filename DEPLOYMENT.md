@@ -112,6 +112,8 @@ CREATE TABLE IF NOT EXISTS alert_configs (
   alert_types TEXT DEFAULT '["negative","sensitive"]',
   wecom_webhook TEXT NOT NULL,
   is_active VARCHAR(10) NOT NULL DEFAULT 'true',
+  daily_push_enabled VARCHAR(5) DEFAULT 'false',
+  daily_push_time VARCHAR(5) DEFAULT NULL,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -551,7 +553,47 @@ pm2 logs commenthub --lines 50 | grep -i "analyze\|llm\|ai"
 
 ---
 
-## 八、安全建议
+## 八、新增功能说明
+
+### 1. 评论整体分析（AI 舆情报告）
+- **接口**：`POST /api/comments/overall-analysis`
+- **功能**：选择时间段，AI 自动分析该时段内所有评论的整体舆情趋势
+- **请求参数**：`{ "start_date": "2026-07-01", "end_date": "2026-08-11" }`
+- **响应**：返回评论总数、情感分布、敏感词统计、AI 分析报告
+- **前端位置**：预警中心 → 舆情监控 → 整体分析
+
+### 2. 每日数据推送（企微机器人）
+- **配置方式**：预警配置弹窗中新增「每日推送」设置项
+- **字段说明**：
+  - `daily_push_enabled`：是否启用每日推送（"true"/"false"）
+  - `daily_push_time`：推送时间，格式 HH:mm（如 "09:00"）
+- **推送内容**：当日评论数据汇总 + AI 整体分析报告
+  ```
+  【2026.08.11】舆论监控平台运行情况
+  今日股吧评论 48 条
+  AI 情感分析：好评 15 条，一般 18 条，差评 15 条
+  无敏感字
+  --- 整体分析 ---
+  （AI 自动生成的舆情分析报告）
+  ```
+- **定时机制**：前端每分钟检查一次，到达设定时间时触发推送
+
+### 3. 情感分析优化
+- **提示词优化**：降低 temperature 至 0.3，减少随机性，提高一致性
+- **自动分析**：上传评论时自动触发 AI 分析，无需手动点击"批量分析"
+- **手动修改**：支持在详情弹窗中手动修改情感分类，同时触发 AI 重新分析
+- **进度条**：批量分析时显示实时进度条
+
+### 4. 数据库新增字段
+```sql
+-- alert_configs 表新增字段
+ALTER TABLE alert_configs ADD COLUMN IF NOT EXISTS daily_push_time varchar(5) DEFAULT NULL;
+ALTER TABLE alert_configs ADD COLUMN IF NOT EXISTS daily_push_enabled varchar(5) DEFAULT 'false';
+```
+
+---
+
+## 九、安全建议
 
 1. **修改默认端口**：生产环境不要使用 5000 端口对外暴露，通过 Nginx 反向代理
 2. **配置防火墙**：只开放必要端口（22/80/443）
