@@ -646,9 +646,8 @@ export default function AlertsCenterPage() {
       return;
     }
     const { jsPDF } = await import("jspdf");
-    const html2canvas = (await import("html2canvas")).default;
+    const { toPng } = await import("html-to-image");
 
-    // 使用 html2canvas 捕获整个报告内容（支持中文）
     const targetEl = reportRef.current;
     if (!targetEl) {
       alert("报告内容未加载，请稍后重试");
@@ -660,61 +659,44 @@ export default function AlertsCenterPage() {
       targetEl.style.display = "block";
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Tailwind CSS v4 使用 lab() 等现代颜色函数，html2canvas 1.4.1 不支持
-      // 方案：在调用 html2canvas 前，遍历目标元素的所有子元素，
-      // 将计算样式中的 lab()/oklch()/oklab()/hwb()/color() 替换为 hex 值
-      const unsupportedColorRe = /(?:lab|oklch|oklab|hwb|color)\s*\([^)]*\)/gi;
-      const colorProps = [
-        "color", "background-color", "border-color",
-        "border-top-color", "border-right-color", "border-bottom-color", "border-left-color",
-        "outline-color", "fill", "stroke", "box-shadow", "text-shadow",
-        "caret-color", "accent-color", "column-rule-color",
-        "text-decoration-color", "text-emphasis-color",
-      ];
-      // 记录原始内联样式以便恢复
+      // Tailwind CSS v4 使用 lab() 等现代颜色函数，html-to-image 可能也不支持
+      // 方案：遍历所有子元素，检查 ALL 计算样式属性，将含 lab()/oklch() 等的值替换为 hex
+      const hasUnsupportedColor = /(?:lab|oklch|oklab|hwb|color)\s*\([^)]*\)/i;
+      const replaceUnsupportedColor = /(?:lab|oklch|oklab|hwb|color)\s*\([^)]*\)/gi;
       const originalStyles: Map<HTMLElement, string[]> = new Map();
+
       const walkAndReplace = (el: HTMLElement) => {
         const cs = window.getComputedStyle(el);
         const changedProps: string[] = [];
-        colorProps.forEach((prop) => {
+        for (let i = 0; i < cs.length; i++) {
+          const prop = cs[i];
           const val = cs.getPropertyValue(prop);
-          if (val && unsupportedColorRe.test(val)) {
-            // 重置正则
-            unsupportedColorRe.lastIndex = 0;
-            // 用 #000000 替换所有不支持的颜色函数
-            const replaced = val.replace(unsupportedColorRe, "#000000");
+          if (val && hasUnsupportedColor.test(val)) {
+            const replaced = val.replace(replaceUnsupportedColor, "#000000");
             el.style.setProperty(prop, replaced, "important");
             changedProps.push(prop);
           }
-        });
-        // 也处理 background 简写
-        const bg = cs.getPropertyValue("background");
-        if (bg && unsupportedColorRe.test(bg)) {
-          unsupportedColorRe.lastIndex = 0;
-          el.style.setProperty("background", "#ffffff", "important");
-          changedProps.push("background");
         }
         if (changedProps.length > 0) {
           originalStyles.set(el, changedProps);
         }
-        // 递归处理子元素
         const children = el.children;
         for (let i = 0; i < children.length; i++) {
           walkAndReplace(children[i] as HTMLElement);
         }
       };
       walkAndReplace(targetEl);
-      // 等待样式生效
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      // 强制浏览器重新计算样式
+      void targetEl.offsetHeight;
+      await new Promise((resolve) => setTimeout(resolve, 150));
 
-      const canvas = await html2canvas(targetEl, {
+      const dataUrl = await toPng(targetEl, {
         backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-        scrollX: 0,
-        scrollY: -window.scrollY,
+        pixelRatio: 2,
+        cacheBust: true,
+        style: {
+          transform: "none",
+        },
       });
 
       // 恢复原始内联样式
@@ -723,6 +705,20 @@ export default function AlertsCenterPage() {
           el.style.removeProperty(prop);
         });
       });
+
+      // 将 dataUrl 转换为 canvas 以便后续处理
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("无法创建 canvas 上下文");
+      ctx.drawImage(img, 0, 0);
 
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
         throw new Error("无法捕获报告内容");
