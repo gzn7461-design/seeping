@@ -660,17 +660,59 @@ export default function AlertsCenterPage() {
       targetEl.style.display = "block";
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const canvas = await html2canvas(targetEl, {
+      // Tailwind CSS v4 使用 lab() 颜色函数，html2canvas 不支持
+      // 需要手动克隆元素并替换所有 lab() 颜色为 rgb()
+      const clone = targetEl.cloneNode(true) as HTMLElement;
+      clone.style.position = "fixed";
+      clone.style.left = "-9999px";
+      clone.style.top = "0";
+      clone.style.width = targetEl.offsetWidth + "px";
+      document.body.appendChild(clone);
+
+      // 遍历克隆元素的所有子元素，用计算后的样式覆盖 lab() 颜色
+      const replaceLabColors = (el: HTMLElement) => {
+        const computed = window.getComputedStyle(el);
+        const colorProps = [
+          "color", "backgroundColor", "borderColor",
+          "borderTopColor", "borderRightColor", "borderBottomColor", "borderLeftColor",
+          "outlineColor", "fill", "stroke",
+        ];
+        colorProps.forEach((prop) => {
+          const val = computed.getPropertyValue(
+            prop.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase())
+          );
+          if (val && val.includes("lab(")) {
+            el.style.setProperty(prop, "#000000");
+          }
+        });
+        // 也处理 background 简写
+        const bg = computed.getPropertyValue("background");
+        if (bg && bg.includes("lab(")) {
+          el.style.background = "#ffffff";
+        }
+        const children = el.children;
+        for (let i = 0; i < children.length; i++) {
+          replaceLabColors(children[i] as HTMLElement);
+        }
+      };
+      replaceLabColors(clone);
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const canvas = await html2canvas(clone, {
         backgroundColor: "#ffffff",
         scale: 2,
         useCORS: true,
         logging: false,
         allowTaint: true,
         scrollX: 0,
-        scrollY: -window.scrollY,
-        windowWidth: targetEl.scrollWidth,
-        windowHeight: targetEl.scrollHeight,
+        scrollY: 0,
+        windowWidth: clone.scrollWidth,
+        windowHeight: clone.scrollHeight,
       });
+
+      // 清理克隆元素
+      document.body.removeChild(clone);
 
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
         throw new Error("无法捕获报告内容");
