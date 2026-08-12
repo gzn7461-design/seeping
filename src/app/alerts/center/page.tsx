@@ -661,27 +661,7 @@ export default function AlertsCenterPage() {
 
       // Tailwind CSS v4 使用 lab() 等现代颜色函数，html2canvas 1.4.1 不支持
       // 方案：使用 onclone 回调在 html2canvas 内部克隆中设置内联样式
-      // 将 lab() 转换为 RGB 以保留原始颜色
-      const labToRgb = (L: number, a: number, b: number): string => {
-        const y = (L + 16) / 116;
-        const x = a / 500 + y;
-        const z = y - b / 200;
-        const xyz = [x, y, z].map((v) => {
-          const v3 = v * v * v;
-          return v3 > 0.008856 ? v3 : (v - 16 / 116) / 7.787;
-        });
-        const r = xyz[0] * 3.2406 + xyz[1] * -1.5372 + xyz[2] * -0.4986;
-        const g = xyz[0] * -0.9689 + xyz[1] * 1.8758 + xyz[2] * 0.0415;
-        const bl = xyz[0] * 0.0557 + xyz[1] * -0.2040 + xyz[2] * 1.0570;
-        const gamma = (v: number) =>
-          v > 0.0031308 ? 1.055 * Math.pow(v, 1 / 2.4) - 0.055 : 12.92 * v;
-        const toHex = (v: number) =>
-          Math.max(0, Math.min(255, Math.round(gamma(v) * 255)))
-            .toString(16)
-            .padStart(2, "0");
-        return `#${toHex(r)}${toHex(g)}${toHex(bl)}`;
-      };
-
+      // 简单策略：直接替换为安全颜色（白底黑字），确保 PDF 可读
       const canvas = await html2canvas(targetEl, {
         backgroundColor: "#ffffff",
         scale: 2,
@@ -705,28 +685,14 @@ export default function AlertsCenterPage() {
               const prop = cs[i];
               const val = cs.getPropertyValue(prop);
               if (val && unsupportedColorRe.test(val)) {
-                // 尝试解析 lab() 值并转换为 RGB
-                const labMatch = val.match(
-                  /lab\(\s*([\d.]+)%?\s+([-+\d.]+)\s+([-+\d.]+)(?:\s*\/\s*([\d.]+))?\s*\)/i
-                );
+                // 简单策略：直接替换为安全颜色，不尝试转换
                 let replacement = "#000000";
-                if (labMatch) {
-                  const L = parseFloat(labMatch[1]);
-                  const a = parseFloat(labMatch[2]);
-                  const b = parseFloat(labMatch[3]);
-                  replacement = labToRgb(L, a, b);
-                } else {
-                  // 无法解析时使用智能回退
-                  if (prop === "background-color" || prop === "background") {
-                    replacement = "#ffffff";
-                  } else if (prop.includes("border")) {
-                    replacement = "#e2e8f0";
-                  } else if (prop === "color") {
-                    // 文字颜色无法解析时，默认使用白色（因为背景通常是深色卡片）
-                    replacement = "#ffffff";
-                  } else {
-                    replacement = "#000000";
-                  }
+                if (prop === "background-color" || prop === "background") {
+                  replacement = "#ffffff"; // 白色背景
+                } else if (prop.includes("border")) {
+                  replacement = "#d1d5db"; // 浅灰边框
+                } else if (prop === "color") {
+                  replacement = "#000000"; // 黑色文字
                 }
                 htmlEl.style.setProperty(prop, replacement, "important");
               }
