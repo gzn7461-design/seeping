@@ -715,12 +715,18 @@ export default function AlertsCenterPage() {
                   const a = parseFloat(labMatch[2]);
                   const b = parseFloat(labMatch[3]);
                   replacement = labToRgb(L, a, b);
-                } else if (prop === "background-color" || prop === "background") {
-                  replacement = "#ffffff";
-                } else if (prop.includes("border")) {
-                  replacement = "#e2e8f0";
-                } else if (prop === "color") {
-                  replacement = "#1e293b";
+                } else {
+                  // 无法解析时使用智能回退
+                  if (prop === "background-color" || prop === "background") {
+                    replacement = "#ffffff";
+                  } else if (prop.includes("border")) {
+                    replacement = "#e2e8f0";
+                  } else if (prop === "color") {
+                    // 文字颜色无法解析时，默认使用白色（因为背景通常是深色卡片）
+                    replacement = "#ffffff";
+                  } else {
+                    replacement = "#000000";
+                  }
                 }
                 htmlEl.style.setProperty(prop, replacement, "important");
               }
