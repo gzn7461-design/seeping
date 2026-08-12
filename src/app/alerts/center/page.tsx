@@ -656,12 +656,25 @@ export default function AlertsCenterPage() {
     }
 
     try {
+      // 确保元素可见并等待渲染完成
+      targetEl.style.display = "block";
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const canvas = await html2canvas(targetEl, {
         backgroundColor: "#ffffff",
         scale: 2,
         useCORS: true,
         logging: false,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        windowWidth: targetEl.scrollWidth,
+        windowHeight: targetEl.scrollHeight,
       });
+
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        throw new Error("无法捕获报告内容");
+      }
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
@@ -686,13 +699,13 @@ export default function AlertsCenterPage() {
           // 使用 canvas 裁剪
           const sliceCanvas = document.createElement("canvas");
           sliceCanvas.width = canvas.width;
-          sliceCanvas.height = (sliceHeight / imgWidth) * canvas.width;
+          sliceCanvas.height = Math.floor((sliceHeight / imgWidth) * canvas.width);
           const ctx = sliceCanvas.getContext("2d");
           if (ctx) {
             ctx.drawImage(
               canvas,
               0,
-              (position / imgHeight) * canvas.height,
+              Math.floor((position / imgHeight) * canvas.height),
               canvas.width,
               sliceCanvas.height,
               0,
@@ -712,7 +725,7 @@ export default function AlertsCenterPage() {
       pdf.save(`评论分析报告_${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (e) {
       console.error("PDF导出失败:", e);
-      alert("PDF导出失败，请重试");
+      alert(`PDF导出失败: ${e instanceof Error ? e.message : "未知错误"}`);
     }
   };
 
