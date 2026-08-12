@@ -21,32 +21,37 @@ export async function POST(request: NextRequest) {
     const alerts = [];
 
     for (const config of configs) {
-      // 获取该股票最近的未处理差评
-      const { data: negativeComments, error: negError } = await supabase
-        .from("stock_comments")
-        .select("*")
-        .eq("stock_code", config.stock_code)
-        .eq("sentiment", "negative")
-        .eq("is_processed", "false")
-        .order("created_at", { ascending: false })
-        .limit(10);
+      let negativeComments: any[] = [];
+      let sensitiveComments: any[] = [];
 
-      if (negError) continue;
+      // 检查开关：未处理差评检查
+      if (config.check_negative !== "false") {
+        const { data: negData, error: negError } = await supabase
+          .from("stock_comments")
+          .select("*")
+          .eq("stock_code", config.stock_code)
+          .eq("sentiment", "negative")
+          .eq("is_processed", "false")
+          .order("created_at", { ascending: false })
+          .limit(10);
+        if (!negError && negData) negativeComments = negData;
+      }
 
-      // 获取该股票最近的未处理敏感词评论
-      const { data: sensitiveComments, error: sensError } = await supabase
-        .from("stock_comments")
-        .select("*")
-        .eq("stock_code", config.stock_code)
-        .eq("has_sensitive_words", "true")
-        .eq("is_processed", "false")
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (sensError) continue;
+      // 检查开关：未处理敏感词检查
+      if (config.check_sensitive !== "false") {
+        const { data: sensData, error: sensError } = await supabase
+          .from("stock_comments")
+          .select("*")
+          .eq("stock_code", config.stock_code)
+          .eq("has_sensitive_words", "true")
+          .eq("is_processed", "false")
+          .order("created_at", { ascending: false })
+          .limit(10);
+        if (!sensError && sensData) sensitiveComments = sensData;
+      }
 
       // 发送差评预警
-      if (negativeComments && negativeComments.length > 0) {
+      if (config.check_negative !== "false" && negativeComments && negativeComments.length > 0) {
         const webhook = config.wecom_webhook;
         if (webhook) {
           const message = {
@@ -97,7 +102,7 @@ ${negativeComments.map((c: any, idx: number) => `${idx + 1}. **${c.username || "
       }
 
       // 发送敏感词预警
-      if (sensitiveComments && sensitiveComments.length > 0) {
+      if (config.check_sensitive !== "false" && sensitiveComments && sensitiveComments.length > 0) {
         const webhook = config.wecom_webhook;
         if (webhook) {
           const message = {

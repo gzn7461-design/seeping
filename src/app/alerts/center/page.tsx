@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity, Plus, Upload, BarChart3, Calendar, Send, Edit, Trash2, Download, Loader2 } from "lucide-react";
+import { AlertTriangle, Bell, MessageSquare, TrendingUp, Shield, Clock, Activity, Plus, Upload, BarChart3, Calendar, Send, Edit, Trash2, Download, Loader2, FileDown, CheckSquare, Square } from "lucide-react";
 import Link from "next/link";
 
 interface AlertRecord {
@@ -35,6 +35,8 @@ interface AlertConfig {
   check_interval?: string;
   daily_push_enabled?: string;
   daily_push_time?: string;
+  check_negative?: string;
+  check_sensitive?: string;
   wecom_webhook: string;
   alert_types?: string;
   is_active: string;
@@ -109,6 +111,8 @@ export default function AlertsCenterPage() {
     stock_name: "",
     negative_threshold: "30",
     check_interval: "30",
+    check_negative: "true",
+    check_sensitive: "true",
     wecom_webhook: "",
     alert_types: ["negative", "sensitive_word"],
     daily_push_enabled: "false",
@@ -119,8 +123,14 @@ export default function AlertsCenterPage() {
   const [selectedDate, setSelectedDate] = useState("today");
   const [customDate, setCustomDate] = useState("");
 
-  // 批量选择
+  // 批量选择（评论）
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // 预警记录选择
+  const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+
+  // 图表导出
+  const chartRef = useRef<HTMLDivElement>(null);
 
   // 评论上传
   const [uploadStockCode, setUploadStockCode] = useState("");
@@ -273,6 +283,8 @@ export default function AlertsCenterPage() {
       stock_name: config.stock_name,
       negative_threshold: config.negative_threshold,
       check_interval: config.check_interval || "30",
+      check_negative: config.check_negative || "true",
+      check_sensitive: config.check_sensitive || "true",
       wecom_webhook: config.wecom_webhook,
       alert_types: config.alert_types ? config.alert_types.split(",") : ["negative", "sensitive_word"],
       daily_push_enabled: config.daily_push_enabled || "false",
@@ -313,6 +325,8 @@ export default function AlertsCenterPage() {
           stock_name: config.stock_name,
           negative_threshold: config.negative_threshold,
           check_interval: config.check_interval || "30",
+          check_negative: config.check_negative || "true",
+          check_sensitive: config.check_sensitive || "true",
           daily_push_enabled: config.daily_push_enabled || "false",
           daily_push_time: config.daily_push_time || null,
           wecom_webhook: config.wecom_webhook,
@@ -622,6 +636,123 @@ export default function AlertsCenterPage() {
     } finally {
       setOverallAnalyzing(false);
     }
+  };
+
+  const handleExportPDF = async () => {
+    if (!overallAnalysis) {
+      alert("请先进行整体分析");
+      return;
+    }
+    const { jsPDF } = await import("jspdf");
+    const html2canvas = (await import("html2canvas")).default;
+
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    let y = 20;
+
+    // 标题
+    pdf.setFontSize(18);
+    pdf.text("评论整体分析报告", pageWidth / 2, y, { align: "center" });
+    y += 12;
+
+    // 日期
+    pdf.setFontSize(10);
+    pdf.text(`报告日期：${overallAnalysis.start_date || overallStartDate} ~ ${overallAnalysis.end_date || overallEndDate}`, pageWidth / 2, y, { align: "center" });
+    y += 10;
+
+    // 数据统计
+    pdf.setFontSize(14);
+    pdf.text("📊 数据统计", 14, y);
+    y += 8;
+    pdf.setFontSize(10);
+    pdf.text(`总评论数：${overallAnalysis.total_comments} 条`, 20, y);
+    y += 7;
+    pdf.text(`好评：${overallAnalysis.positive_count} 条`, 20, y);
+    y += 7;
+    pdf.text(`一般：${overallAnalysis.neutral_count} 条`, 20, y);
+    y += 7;
+    pdf.text(`差评：${overallAnalysis.negative_count} 条`, 20, y);
+    y += 7;
+    pdf.text(`涉及敏感字：${overallAnalysis.sensitive_count} 条`, 20, y);
+    y += 12;
+
+    // 数据分布图
+    if (chartRef.current) {
+      try {
+        const canvas = await html2canvas(chartRef.current, { backgroundColor: "#ffffff", scale: 2 });
+        const imgData = canvas.toDataURL("image/png");
+        const imgWidth = pageWidth - 28;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        if (y + imgHeight > 270) {
+          pdf.addPage();
+          y = 20;
+        }
+        pdf.setFontSize(14);
+        pdf.text("📈 数据分布图", 14, y);
+        y += 5;
+        pdf.addImage(imgData, "PNG", 14, y, imgWidth, Math.min(imgHeight, 60));
+        y += Math.min(imgHeight, 60) + 5;
+      } catch (e) {
+        console.error("图表截图失败:", e);
+      }
+    }
+
+    // AI分析结论
+    if (overallAnalysis.ai_analysis) {
+      if (y > 240) {
+        pdf.addPage();
+        y = 20;
+      }
+      pdf.setFontSize(14);
+      pdf.text("🔍 AI 分析结论", 14, y);
+      y += 8;
+      pdf.setFontSize(10);
+      const lines = pdf.splitTextToSize(overallAnalysis.ai_analysis, pageWidth - 28);
+      for (const line of lines) {
+        if (y > 275) {
+          pdf.addPage();
+          y = 20;
+        }
+        pdf.text(line, 14, y);
+        y += 6;
+      }
+    }
+
+    pdf.save(`评论分析报告_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
+  // 预警记录删除
+  const handleDeleteRecords = async (type: "all" | "sensitive" | "negative") => {
+    if (!confirm("确定删除选中的预警记录？")) return;
+    try {
+      const ids = selectedRecordIds;
+      if (ids.length === 0) {
+        alert("请先选择需要删除的预警记录");
+        return;
+      }
+      const res = await fetch("/api/alerts/records/batch-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, type }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`成功删除 ${ids.length} 条预警记录`);
+        setSelectedRecordIds([]);
+        fetchAlertData();
+      } else {
+        alert(data.error || "删除失败");
+      }
+    } catch (error) {
+      console.error("删除预警记录失败:", error);
+      alert("删除失败");
+    }
+  };
+
+  const toggleRecordId = (id: string) => {
+    setSelectedRecordIds((prev) =>
+      prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]
+    );
   };
 
   // 定时检查未处理的差评和敏感词（根据配置的间隔时间）
@@ -1200,6 +1331,57 @@ export default function AlertsCenterPage() {
                   )}
                 </div>
               )}
+
+              {/* 数据分布图 + PDF导出 */}
+              {overallAnalysis && (
+                <div className="space-y-3">
+                  {/* 图表容器 - 用于PDF导出 */}
+                  <div ref={chartRef} className="bg-white p-6 rounded-lg border">
+                    <h3 className="text-sm font-medium mb-4">情感分布统计</h3>
+                    <div className="space-y-3">
+                      {[
+                        { label: "看好", count: overallAnalysis.stats.positive, color: "bg-green-500" },
+                        { label: "中性", count: overallAnalysis.stats.neutral, color: "bg-yellow-500" },
+                        { label: "看空", count: overallAnalysis.stats.negative, color: "bg-red-500" },
+                      ].map((item) => {
+                        const max = Math.max(overallAnalysis.stats.positive, overallAnalysis.stats.neutral, overallAnalysis.stats.negative, 1);
+                        const pct = (item.count / max) * 100;
+                        return (
+                          <div key={item.label} className="flex items-center gap-3">
+                            <span className="w-12 text-sm text-right">{item.label}</span>
+                            <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full ${item.color} rounded-full transition-all duration-500`}
+                                style={{ width: `${Math.max(pct, item.count > 0 ? 5 : 0)}%` }}
+                              />
+                            </div>
+                            <span className="w-8 text-sm text-muted-foreground">{item.count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {overallAnalysis.sensitiveCount > 0 && (
+                      <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
+                        涉及敏感字评论：{overallAnalysis.sensitiveCount} 条
+                      </div>
+                    )}
+                    <div className="mt-2 text-xs text-muted-foreground text-center">
+                      分析周期：{overallStartDate || "—"} ~ {overallEndDate || "—"}
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportPDF}
+                    disabled={overallAnalyzing}
+                    className="gap-2"
+                  >
+                    <FileDown className="h-4 w-4" />
+                    导出PDF
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1341,6 +1523,37 @@ export default function AlertsCenterPage() {
                         </div>
                       </div>
 
+                      {/* 未处理检查开关 */}
+                      <div className="border-t pt-4">
+                        <h4 className="text-sm font-medium mb-3">🔍 未处理检查设置</h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              id="check_negative"
+                              checked={configForm.check_negative !== "false"}
+                              onCheckedChange={(checked) => {
+                                setConfigForm({ ...configForm, check_negative: checked ? "true" : "false" });
+                              }}
+                            />
+                            <label htmlFor="check_negative" className="text-sm">
+                              未处理差评检查（定时检查未处理的差评并推送）
+                            </label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              id="check_sensitive"
+                              checked={configForm.check_sensitive !== "false"}
+                              onCheckedChange={(checked) => {
+                                setConfigForm({ ...configForm, check_sensitive: checked ? "true" : "false" });
+                              }}
+                            />
+                            <label htmlFor="check_sensitive" className="text-sm">
+                              未处理敏感字检查（定时检查未处理的敏感字评论并推送）
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* 每日推送设置 */}
                       <div className="border-t pt-4">
                         <h4 className="text-sm font-medium mb-3">📊 每日推送设置</h4>
@@ -1467,10 +1680,30 @@ export default function AlertsCenterPage() {
                     <div className="text-center py-8 text-gray-500">暂无预警记录</div>
                   ) : (
                     <div className="space-y-4">
+                      {selectedRecordIds.length > 0 && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteRecords("all")}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            删除选中（{selectedRecordIds.length}条）
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSelectedRecordIds([])}
+                          >
+                            取消选择
+                          </Button>
+                        </div>
+                      )}
                       {alertRecords.slice(0, 20).map((record) => (
-                        <div key={record.id} className="border rounded-lg p-4 space-y-2">
+                        <div key={record.id} className={`border rounded-lg p-4 space-y-2 cursor-pointer hover:bg-gray-50 ${selectedRecordIds.includes(record.id) ? 'border-blue-400 bg-blue-50' : ''}`} onClick={() => toggleRecordId(record.id)}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
+                              <input type="checkbox" checked={selectedRecordIds.includes(record.id)} onChange={() => toggleRecordId(record.id)} className="w-4 h-4" onClick={(e) => e.stopPropagation()} />
                               {getAlertTypeBadge(record.alert_type)}
                               <span className="font-medium">
                                 {record.stock_name} ({record.stock_code})
@@ -1496,6 +1729,11 @@ export default function AlertsCenterPage() {
                 <CardHeader>
                   <CardTitle>敏感字预警</CardTitle>
                   <CardDescription>检测到敏感字的评论预警</CardDescription>
+                  {selectedRecordIds.length > 0 && (
+                    <Button variant="destructive" size="sm" onClick={() => handleDeleteRecords('sensitive')}>
+                      <Trash2 className="h-4 w-4 mr-1" />删除选中 ({selectedRecordIds.length})
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {loading ? (
@@ -1505,9 +1743,21 @@ export default function AlertsCenterPage() {
                   ) : (
                     <div className="space-y-4">
                       {sensitiveAlerts.slice(0, 20).map((alert) => (
-                        <div key={alert.id} className="border border-red-200 rounded-lg p-4 space-y-2">
+                        <div key={alert.id} className={`border rounded-lg p-4 space-y-2 ${selectedRecordIds.includes(alert.id) ? 'border-blue-400 bg-blue-50' : 'border-red-200'}`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300"
+                                checked={selectedRecordIds.includes(alert.id)}
+                                onChange={() => {
+                                  setSelectedRecordIds(prev =>
+                                    prev.includes(alert.id)
+                                      ? prev.filter(id => id !== alert.id)
+                                      : [...prev, alert.id]
+                                  );
+                                }}
+                              />
                               <Badge variant="destructive">敏感字</Badge>
                               <span className="font-medium">
                                 {alert.stock_name} ({alert.stock_code})

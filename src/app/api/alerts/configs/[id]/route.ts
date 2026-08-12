@@ -8,7 +8,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { stock_code, stock_name, negative_threshold, wecom_webhook, alert_types, check_interval, daily_push_enabled, daily_push_time } = body;
+    const { stock_code, stock_name, negative_threshold, wecom_webhook, alert_types, check_interval, daily_push_enabled, daily_push_time, check_negative, check_sensitive } = body;
 
     if (!stock_code || !stock_name || !wecom_webhook) {
       return NextResponse.json(
@@ -28,6 +28,8 @@ export async function PUT(
         check_interval: check_interval || '30',
         daily_push_enabled: daily_push_enabled || 'false',
         daily_push_time: daily_push_time || null,
+        check_negative: check_negative || 'true',
+        check_sensitive: check_sensitive || 'true',
         wecom_webhook,
         alert_types: alert_types || 'negative,sensitive_word',
         updated_at: new Date().toISOString(),
