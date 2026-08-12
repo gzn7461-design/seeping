@@ -638,6 +638,8 @@ export default function AlertsCenterPage() {
     }
   };
 
+  const reportRef = useRef<HTMLDivElement>(null);
+
   const handleExportPDF = async () => {
     if (!overallAnalysis) {
       alert("请先进行整体分析");
@@ -646,79 +648,72 @@ export default function AlertsCenterPage() {
     const { jsPDF } = await import("jspdf");
     const html2canvas = (await import("html2canvas")).default;
 
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    let y = 20;
-
-    // 标题
-    pdf.setFontSize(18);
-    pdf.text("评论整体分析报告", pageWidth / 2, y, { align: "center" });
-    y += 12;
-
-    // 日期
-    pdf.setFontSize(10);
-    pdf.text(`报告日期：${overallAnalysis.start_date || overallStartDate} ~ ${overallAnalysis.end_date || overallEndDate}`, pageWidth / 2, y, { align: "center" });
-    y += 10;
-
-    // 数据统计
-    pdf.setFontSize(14);
-    pdf.text("📊 数据统计", 14, y);
-    y += 8;
-    pdf.setFontSize(10);
-    pdf.text(`总评论数：${overallAnalysis.total_comments} 条`, 20, y);
-    y += 7;
-    pdf.text(`好评：${overallAnalysis.positive_count} 条`, 20, y);
-    y += 7;
-    pdf.text(`一般：${overallAnalysis.neutral_count} 条`, 20, y);
-    y += 7;
-    pdf.text(`差评：${overallAnalysis.negative_count} 条`, 20, y);
-    y += 7;
-    pdf.text(`涉及敏感字：${overallAnalysis.sensitive_count} 条`, 20, y);
-    y += 12;
-
-    // 数据分布图
-    if (chartRef.current) {
-      try {
-        const canvas = await html2canvas(chartRef.current, { backgroundColor: "#ffffff", scale: 2 });
-        const imgData = canvas.toDataURL("image/png");
-        const imgWidth = pageWidth - 28;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        if (y + imgHeight > 270) {
-          pdf.addPage();
-          y = 20;
-        }
-        pdf.setFontSize(14);
-        pdf.text("📈 数据分布图", 14, y);
-        y += 5;
-        pdf.addImage(imgData, "PNG", 14, y, imgWidth, Math.min(imgHeight, 60));
-        y += Math.min(imgHeight, 60) + 5;
-      } catch (e) {
-        console.error("图表截图失败:", e);
-      }
+    // 使用 html2canvas 捕获整个报告内容（支持中文）
+    const targetEl = reportRef.current;
+    if (!targetEl) {
+      alert("报告内容未加载，请稍后重试");
+      return;
     }
 
-    // AI分析结论
-    if (overallAnalysis.ai_analysis) {
-      if (y > 240) {
-        pdf.addPage();
-        y = 20;
-      }
-      pdf.setFontSize(14);
-      pdf.text("🔍 AI 分析结论", 14, y);
-      y += 8;
-      pdf.setFontSize(10);
-      const lines = pdf.splitTextToSize(overallAnalysis.ai_analysis, pageWidth - 28);
-      for (const line of lines) {
-        if (y > 275) {
-          pdf.addPage();
-          y = 20;
-        }
-        pdf.text(line, 14, y);
-        y += 6;
-      }
-    }
+    try {
+      const canvas = await html2canvas(targetEl, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
 
-    pdf.save(`评论分析报告_${new Date().toISOString().slice(0, 10)}.pdf`);
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      // 如果图片高度超过一页，分页处理
+      let position = 0;
+      const pageContentHeight = pageHeight - 20; // 上下各留10mm边距
+
+      if (imgHeight <= pageContentHeight) {
+        pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
+      } else {
+        // 多页处理
+        let remainingHeight = imgHeight;
+        let currentPage = 0;
+        while (remainingHeight > 0) {
+          if (currentPage > 0) pdf.addPage();
+          const sliceHeight = Math.min(remainingHeight, pageContentHeight);
+          // 使用 canvas 裁剪
+          const sliceCanvas = document.createElement("canvas");
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = (sliceHeight / imgWidth) * canvas.width;
+          const ctx = sliceCanvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(
+              canvas,
+              0,
+              (position / imgHeight) * canvas.height,
+              canvas.width,
+              sliceCanvas.height,
+              0,
+              0,
+              sliceCanvas.width,
+              sliceCanvas.height
+            );
+          }
+          const sliceImgData = sliceCanvas.toDataURL("image/png");
+          pdf.addImage(sliceImgData, "PNG", 10, 10, imgWidth, sliceHeight);
+          position += sliceHeight;
+          remainingHeight -= sliceHeight;
+          currentPage++;
+        }
+      }
+
+      pdf.save(`评论分析报告_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (e) {
+      console.error("PDF导出失败:", e);
+      alert("PDF导出失败，请重试");
+    }
   };
 
   // 预警记录删除
@@ -1268,6 +1263,7 @@ export default function AlertsCenterPage() {
               </div>
 
               {overallAnalysis && (
+                <div ref={reportRef} className="space-y-4">
                 <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
                   <div className="flex items-center gap-4 text-sm">
                     <span className="text-muted-foreground">
@@ -1330,10 +1326,8 @@ export default function AlertsCenterPage() {
                     </div>
                   )}
                 </div>
-              )}
 
               {/* 数据分布图 + PDF导出 */}
-              {overallAnalysis && (
                 <div className="space-y-3">
                   {/* 图表容器 - 用于PDF导出 */}
                   <div ref={chartRef} className="bg-white p-6 rounded-lg border">
@@ -1369,6 +1363,7 @@ export default function AlertsCenterPage() {
                       分析周期：{overallStartDate || "—"} ~ {overallEndDate || "—"}
                     </div>
                   </div>
+                </div>
 
                   <Button
                     variant="outline"
