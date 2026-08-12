@@ -646,7 +646,7 @@ export default function AlertsCenterPage() {
       return;
     }
     const { jsPDF } = await import("jspdf");
-    const { toPng } = await import("html-to-image");
+    const html2canvas = (await import("html2canvas")).default;
 
     const targetEl = reportRef.current;
     if (!targetEl) {
@@ -659,66 +659,75 @@ export default function AlertsCenterPage() {
       targetEl.style.display = "block";
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Tailwind CSS v4 使用 lab() 等现代颜色函数，html-to-image 可能也不支持
-      // 方案：遍历所有子元素，检查 ALL 计算样式属性，将含 lab()/oklch() 等的值替换为 hex
-      const hasUnsupportedColor = /(?:lab|oklch|oklab|hwb|color)\s*\([^)]*\)/i;
-      const replaceUnsupportedColor = /(?:lab|oklch|oklab|hwb|color)\s*\([^)]*\)/gi;
-      const originalStyles: Map<HTMLElement, string[]> = new Map();
-
-      const walkAndReplace = (el: HTMLElement) => {
-        const cs = window.getComputedStyle(el);
-        const changedProps: string[] = [];
-        for (let i = 0; i < cs.length; i++) {
-          const prop = cs[i];
-          const val = cs.getPropertyValue(prop);
-          if (val && hasUnsupportedColor.test(val)) {
-            const replaced = val.replace(replaceUnsupportedColor, "#000000");
-            el.style.setProperty(prop, replaced, "important");
-            changedProps.push(prop);
-          }
-        }
-        if (changedProps.length > 0) {
-          originalStyles.set(el, changedProps);
-        }
-        const children = el.children;
-        for (let i = 0; i < children.length; i++) {
-          walkAndReplace(children[i] as HTMLElement);
-        }
+      // Tailwind CSS v4 使用 lab() 等现代颜色函数，html2canvas 1.4.1 不支持
+      // 方案：使用 onclone 回调在 html2canvas 内部克隆中设置内联样式
+      // 将 lab() 转换为 RGB 以保留原始颜色
+      const labToRgb = (L: number, a: number, b: number): string => {
+        const y = (L + 16) / 116;
+        const x = a / 500 + y;
+        const z = y - b / 200;
+        const xyz = [x, y, z].map((v) => {
+          const v3 = v * v * v;
+          return v3 > 0.008856 ? v3 : (v - 16 / 116) / 7.787;
+        });
+        const r = xyz[0] * 3.2406 + xyz[1] * -1.5372 + xyz[2] * -0.4986;
+        const g = xyz[0] * -0.9689 + xyz[1] * 1.8758 + xyz[2] * 0.0415;
+        const bl = xyz[0] * 0.0557 + xyz[1] * -0.2040 + xyz[2] * 1.0570;
+        const gamma = (v: number) =>
+          v > 0.0031308 ? 1.055 * Math.pow(v, 1 / 2.4) - 0.055 : 12.92 * v;
+        const toHex = (v: number) =>
+          Math.max(0, Math.min(255, Math.round(gamma(v) * 255)))
+            .toString(16)
+            .padStart(2, "0");
+        return `#${toHex(r)}${toHex(g)}${toHex(bl)}`;
       };
-      walkAndReplace(targetEl);
-      // 强制浏览器重新计算样式
-      void targetEl.offsetHeight;
-      await new Promise((resolve) => setTimeout(resolve, 150));
 
-      const dataUrl = await toPng(targetEl, {
+      const canvas = await html2canvas(targetEl, {
         backgroundColor: "#ffffff",
-        pixelRatio: 2,
-        cacheBust: true,
-        style: {
-          transform: "none",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        onclone: (doc: Document) => {
+          void doc.body.offsetHeight;
+
+          const allEls = doc.querySelectorAll("*");
+          const unsupportedColorRe = /(?:lab|oklch|oklab|hwb|color)\s*\([^)]*\)/i;
+
+          allEls.forEach((el) => {
+            const htmlEl = el as HTMLElement;
+            const cs = doc.defaultView?.getComputedStyle(htmlEl);
+            if (!cs) return;
+
+            for (let i = 0; i < cs.length; i++) {
+              const prop = cs[i];
+              const val = cs.getPropertyValue(prop);
+              if (val && unsupportedColorRe.test(val)) {
+                // 尝试解析 lab() 值并转换为 RGB
+                const labMatch = val.match(
+                  /lab\(\s*([\d.]+)%?\s+([-+\d.]+)\s+([-+\d.]+)(?:\s*\/\s*([\d.]+))?\s*\)/i
+                );
+                let replacement = "#000000";
+                if (labMatch) {
+                  const L = parseFloat(labMatch[1]);
+                  const a = parseFloat(labMatch[2]);
+                  const b = parseFloat(labMatch[3]);
+                  replacement = labToRgb(L, a, b);
+                } else if (prop === "background-color" || prop === "background") {
+                  replacement = "#ffffff";
+                } else if (prop.includes("border")) {
+                  replacement = "#e2e8f0";
+                } else if (prop === "color") {
+                  replacement = "#1e293b";
+                }
+                htmlEl.style.setProperty(prop, replacement, "important");
+              }
+            }
+          });
         },
       });
-
-      // 恢复原始内联样式
-      originalStyles.forEach((props, el) => {
-        props.forEach((prop) => {
-          el.style.removeProperty(prop);
-        });
-      });
-
-      // 将 dataUrl 转换为 canvas 以便后续处理
-      const img = new Image();
-      img.src = dataUrl;
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-      });
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("无法创建 canvas 上下文");
-      ctx.drawImage(img, 0, 0);
 
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
         throw new Error("无法捕获报告内容");
