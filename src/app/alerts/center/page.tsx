@@ -660,59 +660,30 @@ export default function AlertsCenterPage() {
       targetEl.style.display = "block";
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Tailwind CSS v4 使用 lab() 颜色函数，html2canvas 不支持
-      // 需要手动克隆元素并替换所有 lab() 颜色为 rgb()
-      const clone = targetEl.cloneNode(true) as HTMLElement;
-      clone.style.position = "fixed";
-      clone.style.left = "-9999px";
-      clone.style.top = "0";
-      clone.style.width = targetEl.offsetWidth + "px";
-      document.body.appendChild(clone);
-
-      // 遍历克隆元素的所有子元素，用计算后的样式覆盖 lab() 颜色
-      const replaceLabColors = (el: HTMLElement) => {
-        const computed = window.getComputedStyle(el);
-        const colorProps = [
-          "color", "backgroundColor", "borderColor",
-          "borderTopColor", "borderRightColor", "borderBottomColor", "borderLeftColor",
-          "outlineColor", "fill", "stroke",
-        ];
-        colorProps.forEach((prop) => {
-          const val = computed.getPropertyValue(
-            prop.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase())
-          );
-          if (val && val.includes("lab(")) {
-            el.style.setProperty(prop, "#000000");
-          }
-        });
-        // 也处理 background 简写
-        const bg = computed.getPropertyValue("background");
-        if (bg && bg.includes("lab(")) {
-          el.style.background = "#ffffff";
-        }
-        const children = el.children;
-        for (let i = 0; i < children.length; i++) {
-          replaceLabColors(children[i] as HTMLElement);
-        }
-      };
-      replaceLabColors(clone);
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      const canvas = await html2canvas(clone, {
+      // Tailwind CSS v4 使用 lab() 等现代颜色函数，html2canvas 1.4.1 不支持
+      // 改用 onclone 回调在 html2canvas 内部克隆中替换样式中的不支持的函数
+      const canvas = await html2canvas(targetEl, {
         backgroundColor: "#ffffff",
         scale: 2,
         useCORS: true,
-        logging: false,
+        logging: true,
         allowTaint: true,
         scrollX: 0,
-        scrollY: 0,
-        windowWidth: clone.scrollWidth,
-        windowHeight: clone.scrollHeight,
+        scrollY: -window.scrollY,
+        onclone: (doc: Document) => {
+          // 替换所有 style 标签中 html2canvas 不支持的 CSS 颜色函数
+          const allStyles = doc.querySelectorAll("style");
+          const unsupportedColorRe = /(?:lab|oklch|oklab|hwb|color)\s*\([^)]*\)/gi;
+          allStyles.forEach((s) => {
+            if (s.textContent && unsupportedColorRe.test(s.textContent)) {
+              s.textContent = s.textContent.replace(unsupportedColorRe, "#000000");
+            }
+          });
+          // 移除所有 link[rel=stylesheet] 防止外部 CSS 携带不支持的函数
+          const links = doc.querySelectorAll("link[rel='stylesheet']");
+          links.forEach((l) => l.remove());
+        },
       });
-
-      // 清理克隆元素
-      document.body.removeChild(clone);
 
       if (!canvas || canvas.width === 0 || canvas.height === 0) {
         throw new Error("无法捕获报告内容");
