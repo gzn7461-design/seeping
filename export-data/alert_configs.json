@@ -1,0 +1,18 @@
+[
+  {
+    "id": "2c1f1571-c68d-4506-81c4-a073b3a2e918",
+    "stock_code": "002388",
+    "stock_name": "新亚制程",
+    "negative_threshold": "30",
+    "wecom_webhook": "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=d866d07a-28be-4b68-812c-28c7a6cd4aa8",
+    "is_active": "true",
+    "created_at": "2026-08-12T16:31:17.208942+08:00",
+    "updated_at": "2026-08-12T16:37:32.856+08:00",
+    "alert_types": "negative,sensitive_word",
+    "check_interval": "30",
+    "daily_push_time": "18:00",
+    "daily_push_enabled": "true",
+    "check_negative": "false",
+    "check_sensitive": "true"
+  }
+]

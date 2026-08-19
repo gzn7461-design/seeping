@@ -1,0 +1,110 @@
+[
+  {
+    "id": "4f8be441-2483-45e0-a1fa-89b97eb4b751",
+    "word": "立案",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:42:10.052668+08:00",
+    "updated_at": "2026-08-05T16:42:10.052668+08:00"
+  },
+  {
+    "id": "a242f43e-a8c3-4a46-98a2-eed4c43fa7be",
+    "word": "现场检查",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:42:19.768425+08:00",
+    "updated_at": "2026-08-05T16:42:19.768425+08:00"
+  },
+  {
+    "id": "37af2f3d-f81a-412f-9c18-f9b042bb4acb",
+    "word": "杨寿海",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:42:30.019491+08:00",
+    "updated_at": "2026-08-05T16:42:30.019491+08:00"
+  },
+  {
+    "id": "85d0b98d-8b83-44aa-88e4-053d67d911ff",
+    "word": "徐易",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:42:37.105275+08:00",
+    "updated_at": "2026-08-05T16:42:37.105275+08:00"
+  },
+  {
+    "id": "81162504-4a84-4b86-a783-ed71e22dc830",
+    "word": "造假",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:42:44.158006+08:00",
+    "updated_at": "2026-08-05T16:42:44.158006+08:00"
+  },
+  {
+    "id": "2023378a-48bb-4547-b19d-49a15bc4938a",
+    "word": "爆仓",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:42:50.80987+08:00",
+    "updated_at": "2026-08-05T16:42:50.80987+08:00"
+  },
+  {
+    "id": "661422c7-8d77-494e-8569-6b507083e7d4",
+    "word": "退市",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:42:57.641634+08:00",
+    "updated_at": "2026-08-05T16:42:57.641634+08:00"
+  },
+  {
+    "id": "83a76ef8-7aec-470e-8407-6b360283478e",
+    "word": "卖公司",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:43:03.295113+08:00",
+    "updated_at": "2026-08-05T16:43:03.295113+08:00"
+  },
+  {
+    "id": "71562dfd-9a4b-4aa6-b2ba-30c89672e257",
+    "word": "举报",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:43:16.210002+08:00",
+    "updated_at": "2026-08-05T16:43:16.210002+08:00"
+  },
+  {
+    "id": "3f77cc38-b647-4fa2-97ad-afb54bf14602",
+    "word": "诉讼纠纷",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:43:22.661626+08:00",
+    "updated_at": "2026-08-05T16:43:22.661626+08:00"
+  },
+  {
+    "id": "4fe7d99a-0d87-4573-a219-36f7b823dd01",
+    "word": "老头",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:43:28.534436+08:00",
+    "updated_at": "2026-08-05T16:43:32.369+08:00"
+  },
+  {
+    "id": "9d4a05c8-5b0e-42dd-8acf-45c4e417e640",
+    "word": "老太婆",
+    "category": "general",
+    "level": "high",
+    "is_active": "true",
+    "created_at": "2026-08-05T16:43:39.427339+08:00",
+    "updated_at": "2026-08-05T16:43:39.427339+08:00"
+  }
+]
