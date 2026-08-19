@@ -42,7 +42,23 @@ export function getDb(): Database {
     throw new Error("DATABASE_URL is not set");
   }
 
-  sqlInstance = postgres(databaseUrl, { max: 10 });
+  sqlInstance = postgres(databaseUrl, {
+    max: 10,
+    types: {
+      timestamp: {
+        to: 1114,
+        from: [1114],
+        serialize: (x: Date) => x.toISOString(),
+        parse: (x: string) => new Date(x),
+      },
+      timestamptz: {
+        to: 1184,
+        from: [1184],
+        serialize: (x: Date) => x.toISOString(),
+        parse: (x: string) => new Date(x),
+      },
+    },
+  });
   dbInstance = drizzle(sqlInstance, { schema });
 
   return dbInstance;
