@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // 发送预警到所有配置的企微机器人
     const sendResults = await Promise.all(
-      configs.map(async (config) => {
+      configs.map(async (config: any) => {
         if (!config.wecom_webhook) return false;
         return sendWeComMessage(config.wecom_webhook, message);
       })
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     const sent = sendResults.some((result) => result);
 
     // 记录预警记录
-    const alertRecords = configs.map((config) => ({
+    const alertRecords = configs.map((config: any) => ({
       config_id: config.id,
       stock_code: stockCode,
       stock_name: stockName,

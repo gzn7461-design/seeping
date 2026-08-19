@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
       // 计算差评占比
       const totalComments = comments.length;
-      const negativeComments = comments.filter(c => c.sentiment === 'negative').length;
+      const negativeComments = comments.filter((c: any) => c.sentiment === 'negative').length;
       const negativePercentage = (negativeComments / totalComments) * 100;
 
       const threshold = parseFloat(config.negative_threshold);
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
 
 📋 **差评详情** (${negativeCommentDetails?.length || 0}条)
 
-${negativeCommentDetails?.map((c, i) => `**${i + 1}. ${c.title || '无标题'}**
+${negativeCommentDetails?.map((c: any, i: number) => `**${i + 1}. ${c.title || '无标题'}**
 
 👤 作者：${c.username}
 

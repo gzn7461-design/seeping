@@ -104,9 +104,9 @@ export async function GET(request: NextRequest) {
       throw sentimentError;
     }
 
-    const positive = sentimentData?.filter(c => c.sentiment === 'positive').length || 0;
-    const neutral = sentimentData?.filter(c => c.sentiment === 'neutral').length || 0;
-    const negative = sentimentData?.filter(c => c.sentiment === 'negative').length || 0;
+    const positive = sentimentData?.filter((c: any) => c.sentiment === 'positive').length || 0;
+    const neutral = sentimentData?.filter((c: any) => c.sentiment === 'neutral').length || 0;
+    const negative = sentimentData?.filter((c: any) => c.sentiment === 'negative').length || 0;
 
     return NextResponse.json({
       success: true,

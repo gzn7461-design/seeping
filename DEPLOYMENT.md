@@ -24,9 +24,9 @@
 
 1. 访问 [Supabase](https://supabase.com) 注册账号
 2. 创建新项目，获取以下信息：
-   - `SUPABASE_URL` — 项目 URL（格式：`https://xxxx.supabase.co`）
-   - `SUPABASE_ANON_KEY` — 匿名密钥
-   - `SUPABASE_SERVICE_ROLE_KEY` — 服务角色密钥（用于 RLS 绕过）
+   - `COZE_SUPABASE_URL` — 项目 URL（格式：`https://xxxx.supabase.co`）
+   - `COZE_SUPABASE_ANON_KEY` — 匿名密钥
+   - `COZE_SUPABASE_SERVICE_ROLE_KEY` — 服务角色密钥（用于 RLS 绕过）
 
 3. 在 Supabase SQL Editor 中依次执行以下 SQL 创建表结构：
 
@@ -260,13 +260,12 @@ nano .env.local
 填入以下配置：
 
 ```env
-# ===== Supabase 配置（必填） =====
-# 使用 Supabase 云服务时填写
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# ===== Supabase 配置（使用 Supabase 云服务时填写） =====
+COZE_SUPABASE_URL=https://your-project.supabase.co
+COZE_SUPABASE_ANON_KEY=your_anon_key
+COZE_SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# ===== 自建 PostgreSQL（二选一，与 Supabase 二选一） =====
+# ===== 自建 PostgreSQL（与 Supabase 二选一） =====
 # DATABASE_URL=postgresql://commenthub_user:your_password@localhost:5432/commenthub
 
 # ===== 应用配置 =====
