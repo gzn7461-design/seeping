@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { getServiceRoleClient } from "@/storage/database/supabase-client";
 import { stockList } from "@/storage/database/shared/schema";
 import { eq, desc } from "drizzle-orm";
 
 export async function GET() {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = getServiceRoleClient();
     const { data, error } = await supabase
       .from("stock_list")
       .select("*")
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabaseClient();
+    const supabase = getServiceRoleClient();
 
     // 检查是否已存在
     const { data: existing } = await supabase

@@ -34,7 +34,7 @@ function getSupabaseCredentials() {
 }
 
 /**
- * 获取 Supabase 客户端（使用 anon key，用于客户端操作）
+ * 获取 Supabase 客户端（使用 service_role key，绕过 RLS）
  */
 export function getSupabaseClient(): DatabaseClient {
   if (clientInstance) return clientInstance;
@@ -45,8 +45,8 @@ export function getSupabaseClient(): DatabaseClient {
     return clientInstance;
   }
 
-  const { url, anonKey } = getSupabaseCredentials();
-  clientInstance = createClient(url, anonKey);
+  const { url, serviceRoleKey } = getSupabaseCredentials();
+  clientInstance = createClient(url, serviceRoleKey);
   return clientInstance;
 }
 
