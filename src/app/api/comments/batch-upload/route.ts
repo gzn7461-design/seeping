@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
         stock_name: stock_name || "未知股票",
         username: username || "匿名用户",
         comment_content: content,
-        comment_time: parseCommentTime(comment_time),
+        comment_time: new Date(parseCommentTime(comment_time)),
         source_url: source_url || null,
         sentiment,
         sentiment_score,
