@@ -1,0 +1,314 @@
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+0|commenth |  ELIFECYCLE  Command failed with exit code 1.
+0|commenth |
+0|commenth | > projects@0.1.0 start /opt/commenthub
+0|commenth | > bash ./scripts/start.sh
+0|commenth |
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+0|commenth |  ELIFECYCLE  Command failed with exit code 1.
+0|commenth |
+0|commenth | > projects@0.1.0 start /opt/commenthub
+0|commenth | > bash ./scripts/start.sh
+0|commenth |
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth |
+0|commenth | > projects@0.1.0 start /opt/commenthub
+0|commenth | > bash ./scripts/start.sh
+0|commenth |
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+0|commenth |  ELIFECYCLE  Command failed with exit code 1.
+0|commenth | > Server listening at http://localhost:5000 as development
+0|commenth |
+0|commenth | > projects@0.1.0 start /opt/commenthub
+0|commenth | > bash ./scripts/start.sh
+0|commenth |
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+0|commenth |  ELIFECYCLE  Command failed with exit code 1.
+0|commenth |
+0|commenth | > projects@0.1.0 start /opt/commenthub
+0|commenth | > bash ./scripts/start.sh
+0|commenth |
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+0|commenth |  ELIFECYCLE  Command failed with exit code 1.
+0|commenth |
+0|commenth | > projects@0.1.0 start /opt/commenthub
+0|commenth | > bash ./scripts/start.sh
+0|commenth |
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth | Starting HTTP service on port 5000 for deploy...
+0|commenth |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+0|commenth |  ELIFECYCLE  Command failed with exit code 1.
+
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+0|commenthub  | (node:1999733) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+0|commenthub  | (Use `node --trace-deprecation ...` to show where the warning was created)
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+0|commenthub  | ○ Compiling / ...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+0|commenthub  |   Using external babel configuration from /opt/commenthub/.babelrc
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+0|commenthub  |  GET / 200 in 5.6s (compile: 5.4s, render: 227ms)
+0|commenthub  | ⚠ Blocked cross-origin request from 192.168.188.40 to /_next/* resource. To allow this, configure "allowedDevOrigins" in next.config
+0|commenthub  | Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+0|commenthub  |  GET /api/dashboard?date=today 500 in 520ms (compile: 468ms, render: 52ms)
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+0|commenthub  | ○ Compiling /stocks ...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+0|commenthub  |  GET /stocks 200 in 24.1s (compile: 24.1s, render: 20ms)
+0|commenthub  |  GET /stocks 200 in 2.3s (compile: 2.3s, render: 48ms)
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+0|commenthub  |  GET /api/stocks 200 in 539ms (compile: 531ms, render: 8ms)
+0|commenthub  |  GET /api/stocks 200 in 15ms (compile: 8ms, render: 7ms)
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+0|commenthub  |  GET / 200 in 21ms (compile: 6ms, render: 16ms)
+0|commenthub  |  GET /api/dashboard?date=today 500 in 11ms (compile: 3ms, render: 8ms)
+0|commenthub  |  GET /api/dashboard?date=today 500 in 10ms (compile: 4ms, render: 6ms)
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+0|commenthub  |  GET /alerts/center 200 in 1046ms (compile: 1025ms, render: 22ms)
+0|commenthub  |  GET /api/stocks 200 in 16ms (compile: 5ms, render: 10ms)
+0|commenthub  |  GET /api/stocks 200 in 11ms (compile: 2ms, render: 9ms)
+0|commenthub  | Failed to fetch comments: { message: 'value.toISOString is not a function', code: undefined }
+0|commenthub  |  GET /api/comments?page=1&pageSize=20&date=today 500 in 235ms (compile: 228ms, render: 6ms)
+0|commenthub  |  POST /api/alerts/check-unprocessed 200 in 257ms (compile: 163ms, render: 94ms)
+0|commenthub  | Failed to fetch comments: { message: 'value.toISOString is not a function', code: undefined }
+0|commenthub  |  GET /api/comments?page=1&pageSize=20&date=today 500 in 5ms (compile: 1773µs, render: 3ms)
+0|commenthub  |  POST /api/alerts/check-unprocessed 200 in 278ms (compile: 177ms, render: 101ms)
+0|commenthub  |  GET /api/alerts/records 200 in 286ms (compile: 205ms, render: 82ms)
+0|commenthub  |  GET /api/alerts/records 200 in 12ms (compile: 4ms, render: 8ms)
+0|commenthub  |  GET /api/alerts/configs 200 in 96ms (compile: 90ms, render: 5ms)
+0|commenthub  |  GET /api/alerts/configs 200 in 12ms (compile: 6ms, render: 6ms)
+0|commenthub  |  POST /api/alerts/check-unprocessed 200 in 10ms (compile: 4ms, render: 7ms)
+0|commenthub  |  POST /api/alerts/check-unprocessed 200 in 12ms (compile: 5ms, render: 7ms)
+0|commenthub  |  GET /api/alerts/sensitive-records 200 in 120ms (compile: 115ms, render: 5ms)
+0|commenthub  |  GET /api/alerts/sensitive-records 200 in 5ms (compile: 1292µs, render: 4ms)
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+0|commenthub  | Failed to fetch comments: { message: 'value.toISOString is not a function', code: undefined }
+0|commenthub  |  GET /api/comments?page=1&pageSize=20&date=week 500 in 5ms (compile: 1780µs, render: 4ms)
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+0|commenthub  | Failed to fetch comments: { message: 'value.toISOString is not a function', code: undefined }
+0|commenthub  |  GET /api/comments?page=1&pageSize=20&date=month 500 in 7ms (compile: 2ms, render: 4ms)
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+0|commenthub  |  GET /api/comments?page=1&pageSize=20 200 in 9ms (compile: 2ms, render: 7ms)
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+0|commenthub  | Failed to fetch comments: { message: 'value.toISOString is not a function', code: undefined }
+0|commenthub  |  GET /api/comments?page=1&pageSize=20&date=week 500 in 6ms (compile: 2ms, render: 4ms)
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+0|commenthub  |  GET /alerts/center 200 in 136ms (compile: 3ms, render: 134ms)
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+0|commenthub  | Failed to fetch comments: { message: 'value.toISOString is not a function', code: undefined }
+0|commenthub  |  GET /api/comments?page=1&pageSize=20&date=today 500 in 7ms (compile: 3ms, render: 4ms)
+0|commenthub  |  GET /api/alerts/records 200 in 15ms (compile: 10ms, render: 5ms)
+0|commenthub  |  GET /api/stocks 200 in 17ms (compile: 7ms, render: 10ms)
+0|commenthub  |  POST /api/alerts/check-unprocessed 200 in 18ms (compile: 11ms, render: 6ms)
+0|commenthub  |  GET /api/alerts/configs 200 in 10ms (compile: 3ms, render: 7ms)
+0|commenthub  |  GET /api/alerts/sensitive-records 200 in 5ms (compile: 1795µs, render: 4ms)
+0|commenthub  |  POST /api/alerts/check-unprocessed 200 in 7ms (compile: 1048µs, render: 6ms)
+0|commenthub  |  GET /api/comments?page=1&pageSize=20 200 in 17ms (compile: 5ms, render: 12ms)
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+0|commenthub  | Failed to fetch comments: { message: 'value.toISOString is not a function', code: undefined }
+0|commenthub  |  GET /api/comments?page=1&pageSize=20&date=month 500 in 6ms (compile: 1693µs, render: 5ms)
+0|commenthub  |  GET /api/comments?page=1&pageSize=20 200 in 6ms (compile: 2ms, render: 4ms)
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
+1|commenthub  | > projects@0.1.0 start /opt/commenthub
+1|commenthub  | > bash ./scripts/start.sh
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | Starting HTTP service on port 5000 for deploy...
+1|commenthub  | ⨯ Unable to acquire lock at /opt/commenthub/.next/dev/lock, is another instance of next dev running?
+1|commenthub  |   Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+1|commenthub  |  ELIFECYCLE  Command failed with exit code 1.
