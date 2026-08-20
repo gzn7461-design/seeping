@@ -44,22 +44,11 @@ export function getDb(): Database {
 
   sqlInstance = postgres(databaseUrl, {
     max: 10,
-    types: {
-      timestamp: {
-        to: 1114,
-        from: [1114],
-        serialize: (x: Date) => x.toISOString(),
-        parse: (x: string) => new Date(x),
-      },
-      timestamptz: {
-        to: 1184,
-        from: [1184],
-        serialize: (x: Date) => x.toISOString(),
-        parse: (x: string) => new Date(x),
-      },
-    },
   });
-  dbInstance = drizzle(sqlInstance, { schema });
+  dbInstance = drizzle(sqlInstance, {
+    schema,
+    logger: false,
+  });
 
   return dbInstance;
 }
@@ -331,14 +320,43 @@ class SupabaseQueryBuilder<T> implements PromiseLike<QueryResult<T>> {
 
       const result = await query;
 
+      // 自动转换日期字段
+      const convertDates = (obj: any): any => {
+        if (!obj) return obj;
+        if (Array.isArray(obj)) {
+          return obj.map(convertDates);
+        }
+        if (typeof obj === 'object') {
+          const converted: any = {};
+          for (const [key, value] of Object.entries(obj)) {
+            if (typeof value === 'string' && 
+                (key.includes('_at') || key.includes('_time') || key === 'collected_at' || key === 'published_at' || key === 'scheduled_at' || key === 'sent_at' || key === 'last_collected_at')) {
+              // 尝试将字符串转换为 Date
+              const date = new Date(value);
+              if (!isNaN(date.getTime())) {
+                converted[key] = date;
+              } else {
+                converted[key] = value;
+              }
+            } else {
+              converted[key] = value;
+            }
+          }
+          return converted;
+        }
+        return obj;
+      };
+
+      const convertedResult = convertDates(result);
+
       // Handle range
       if (this.rangeStart !== null && this.rangeEnd !== null) {
-        const sliced = result.slice(this.rangeStart, this.rangeEnd + 1);
-        return { data: sliced as T[], error: null, count: result.length };
+        const sliced = convertedResult.slice(this.rangeStart, this.rangeEnd + 1);
+        return { data: sliced as T[], error: null, count: convertedResult.length };
       }
 
-      const data = this.singleMode ? result[0] || null : result;
-      return { data: data as T, error: null, count: result.length };
+      const data = this.singleMode ? convertedResult[0] || null : convertedResult;
+      return { data: data as T, error: null, count: convertedResult.length };
     } catch (error: any) {
       return {
         data: null,

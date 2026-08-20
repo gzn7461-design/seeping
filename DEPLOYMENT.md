@@ -538,7 +538,43 @@ pm2 logs commenthub --lines 50
 pm2 logs commenthub --lines 50
 ```
 
-### 7.5 AI 分析失败
+### 7.5 日期字段错误：`value.toISOString is not a function`
+
+**问题现象**：
+```
+Failed to fetch comments: { message: 'value.toISOString is not a function', code: undefined }
+GET /api/comments?page=1&pageSize=20&date=today 500
+GET /api/dashboard?date=today 500
+```
+
+**根本原因**：
+使用自建 PostgreSQL 时，`postgres` 库返回的 `timestamp` 字段是字符串格式（如 `"2026-08-19 17:48:00"`），而不是 `Date` 对象。当代码中对这些字符串调用 `.toISOString()` 时就会报错。
+
+**解决方案**：
+代码已修复，在 `src/storage/database/db-client.ts` 中添加了日期转换逻辑：
+1. 在 `postgres` 客户端配置中添加 `types` 选项，自动将 timestamp 转换为 Date 对象
+2. 在 `execute` 方法中添加 `convertDates` 函数，遍历查询结果自动转换日期字段
+
+**如果仍然报错**：
+```bash
+# 1. 确认代码是最新的
+cd /opt/commenthub
+git pull origin main  # 如果有 git
+
+# 2. 重新安装依赖
+pnpm install
+
+# 3. 重新构建
+pnpm run build
+
+# 4. 重启服务
+pm2 restart commenthub
+
+# 5. 验证修复
+curl -s http://localhost:5000/api/comments?page=1
+```
+
+### 7.6 AI 分析失败
 
 ```bash
 # 1. 检查网络连接（AI 模型需要联网）
