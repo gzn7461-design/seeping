@@ -99,7 +99,7 @@ class SupabaseQueryBuilder<T> implements PromiseLike<QueryResult<T>> {
   private deleteMode = false;
   private singleMode = false;
   private limitCount: number | null = null;
-  private countMode = false;
+  countMode: "exact" | "planned" | "estimated" | false = false;
   private rangeStart: number | null = null;
   private rangeEnd: number | null = null;
 
@@ -109,9 +109,12 @@ class SupabaseQueryBuilder<T> implements PromiseLike<QueryResult<T>> {
     this.tableName = tableName;
   }
 
-  select(columns?: string): this {
+  select(columns?: string, options?: { count?: 'exact' | 'planned' | 'estimated' }): this {
     if (columns && columns !== "*") {
       this.selectColumns = columns.split(",").map((c) => c.trim());
+    }
+    if (options?.count) {
+      this.countMode = options.count;
     }
     return this;
   }
@@ -354,7 +357,7 @@ export class SupabaseCompatibleClient {
     this.db = db;
   }
 
-  from(tableName: string): SupabaseQueryBuilder<any> {
+  from(tableName: string, options?: { count?: 'exact' | 'planned' | 'estimated' }): SupabaseQueryBuilder<any> {
     const tableMap: Record<string, any> = {
       stock_list: schema.stockList,
       comment_templates: schema.commentTemplates,
@@ -371,7 +374,11 @@ export class SupabaseCompatibleClient {
       throw new Error(`Unknown table: ${tableName}`);
     }
 
-    return new SupabaseQueryBuilder(this.db, table, tableName);
+    const queryBuilder = new SupabaseQueryBuilder(this.db, table, tableName);
+    if (options?.count) {
+      queryBuilder.countMode = options.count;
+    }
+    return queryBuilder;
   }
 
   async rpc(_functionName: string, _params?: any): Promise<QueryResult<any>> {
